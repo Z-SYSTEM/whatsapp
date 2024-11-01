@@ -8,6 +8,11 @@ router.post('/sendText', async(req, res)=>{
   // number: debe llevar +549 con el número!
   // text: texto a enviar
   
+  
+  const tokenUser = req.headers.authorization
+  // const validUser = 
+  
+
   const tel = req.body.number
   const chatId = tel.substring(1) + "@c.us";
   const number_details = await whatsapp.getNumberId(chatId);
@@ -19,7 +24,6 @@ router.post('/sendText', async(req, res)=>{
     res.json({res: false})
   }
 })
-
 
 router.post('/enviarMensajeUrl', async(req, res)=>{
   console.log('ingresando....')

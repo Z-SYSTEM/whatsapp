@@ -12,7 +12,7 @@ app.use(express.json());
 app.use('/api', require('./routes/links'));
 
 whatsapp.initialize();
-whatsappConClient('soyCCP')
+
 
 
 app.listen(puerto, ()=>{
