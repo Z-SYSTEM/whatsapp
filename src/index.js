@@ -12,9 +12,10 @@ app.use(express.json());
 app.use('/api', require('./routes/links'));
 
 whatsapp.initialize();
-whatsappConClient('soyCCP')
+
 
 
 app.listen(puerto, ()=>{
-  console.log(`Server on port ${puerto}`)
+  console.log(`Server on port ${puerto} and ${process.env.HOST}`)
+
 });

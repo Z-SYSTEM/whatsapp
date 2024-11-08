@@ -23,8 +23,6 @@ whatsapp.on('ready', () => {
   console.log('Client is ready!');
 });
 
-const whatsappConClient = (clientId) => {
-  console.log(`Recibido ${clientId}`)
-}
 
-module.exports = {whatsapp,MessageMedia,whatsappConClient};
+
+module.exports = {whatsapp,MessageMedia};

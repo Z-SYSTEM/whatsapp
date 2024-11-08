@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node src/index.js"
+    "dev": "node --env-file .env src/index.js"
   },
   "keywords": [],
   "author": "",
