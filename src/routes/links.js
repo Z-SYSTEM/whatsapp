@@ -1,12 +1,15 @@
+require('dotenv').config()
 const {Router} = require('express');
+
 const {whatsapp, MessageMedia} = require('../lib/whatsapp');
 const router = Router();
 
 
 router.post('/sendText', async(req, res)=>{
-  // Ruta con parametros
-  // number: debe llevar +549 con el número!
-  // text: texto a enviar
+  // Ruta con parametros en body
+  // phoneNumber: debe llevar +549 con el número!
+  // messsage: texto a enviar
+  // token :
   
   
   const tokenUser = req.body.token
