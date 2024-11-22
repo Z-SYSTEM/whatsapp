@@ -1,3 +1,4 @@
+require('dotenv').config()
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
 
@@ -24,5 +25,24 @@ whatsapp.on('ready', () => {
 });
 
 
+whatsapp.on('message', async(msg) => {
+  //console.log(msg.rawData)
+  // Requisitos:  5491160553338 // PERSONAL PABLO
+  console.log(msg.from)
+  console.log(process.env.PHONETEST)
+  if (msg.from == process.env.PHONETEST || msg.from == process.env.PHONEPABLO){
+    // recibo msg desde teléfono configurado en .env y  guardo en api soporte
+    const data = `
+      phoneNumber : ${msg.from},
+      message: ${msg.body}
+    `
+    const response = await  fetch(process.env.ONMESSAGE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { 'Content-type': 'application/json' }
+    })
+    console.log(response)
+  }
+})
 
 module.exports = {whatsapp,MessageMedia};

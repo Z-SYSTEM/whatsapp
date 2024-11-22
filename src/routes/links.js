@@ -9,17 +9,25 @@ router.post('/sendText', async(req, res)=>{
   // Ruta con parametros en body
   // phoneNumber: debe llevar +549 con el número!
   // messsage: texto a enviar
-  // token :
+  // token
+  // TokenHardCore no validarlo : dG9rZW50b2tlbnRva2VudG9rZW50b2tlbg==
   
   
   const tokenUser = req.body.token
   const data = `token = ${tokenUser}`
 
-  const validUser = await  fetch(process.env.HOST, {
-    method: 'POST',
-    body: JSON.stringify(data),
-    headers: { 'Content-type': 'application/json' }
-  })
+  // Validar usuario cdo el token es !== TOKENACCESS
+  if (tokenUser == process.env.TOKENACCESS) {
+    validUser = true
+  }
+  else {
+    // Sólo valido cdo tokenAccess es de algún cliente!
+    const validUser = await  fetch(process.env.HOST, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: { 'Content-type': 'application/json' }
+    })
+  }
   if (validUser) {
 
     const tel = req.body.phoneNumber
