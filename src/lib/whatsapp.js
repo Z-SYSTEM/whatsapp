@@ -30,11 +30,32 @@ whatsapp.on('message', async(msg) => {
   
   const match = msg.from.match(/^([^@]+)@/);
   const phoneNumber = match ? match[1] : null;
+  let msgType = ''
+  // según msg Type armo body
+        // TEXT = 'chat',
+        // AUDIO = 'audio',
+        // VOICE = 'ptt',
+        // IMAGE = 'image',
+        // VIDEO = 'video',
+  switch (msg.type ) {
+    case 'image':
+      msgType = 'image'
+      break;
+    case 'audio':
+      msgType = 'audio'
+      break;
   
+    default:
+      msgType = 'chat'
+      break;
+  }
+  
+
   var data = JSON.stringify(
     {
       'phoneNumber': `${phoneNumber}`,
-      'message': `${msg.body}` 
+      'message': `${msg.body}` ,
+      'type' : msgType
     }
   );
  var config = {
