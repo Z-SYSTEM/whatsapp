@@ -58,6 +58,7 @@ whatsapp.on('message', async(msg) => {
       'type' : msgType
     }
   );
+
  var config = {
     method: 'POST',
     url: process.env.ONMESSAGE,
@@ -67,6 +68,8 @@ whatsapp.on('message', async(msg) => {
     data : data
  };
  
+// console.log(msg.rawData)
+
  axios(config)
  .then(function (response) {
     console.log(JSON.stringify(response.data));

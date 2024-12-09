@@ -47,19 +47,35 @@ router.post('/sendText', async(req, res)=>{
 
 })
 
-// router.post('/enviarMensajeUrl', async(req, res)=>{
-//   console.log('ingresando....')
-//   const tel = '+5493435193917'
-//   const chatId = tel.substring(1) + "@c.us";
-//   const number_details = await whatsapp.getNumberId(chatId);
-//   if(number_details){
-//     const media = await MessageMedia.fromUrl('https://drive.google.com/file/d/1FO3MYqQcnYEVE2aWxHXy2k8JPG9GdIRS/view?usp=drive_link',{unsafeMime:true})
-//     await whatsapp.sendMessage(chatId, media);
-//     res.json({res: true})
-//   }else{
-//     res.json({res: false})
-//   }
-// })
+router.post('/enviarMensajeUrl', async(req, res)=>{
+  
+  const tel = req.body.phoneNumber
+  const imgUrl = req.body.imgUrl
+  const tokenUser = req.body.token
+  const data = `token = ${tokenUser}`
+
+   // Sólo valido cdo tokenAccess es de algún cliente!
+   const validUser = await  fetch(process.env.HOST, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { 'Content-type': 'application/json' }
+  })
+  if (validUser) {
+    const chatId = tel.substring(1) + "@c.us";
+    const number_details = await whatsapp.getNumberId(chatId);
+    if(number_details){
+      const media = await MessageMedia.fromUrl(imgUrl,{unsafeMime:true})
+      await whatsapp.sendMessage(chatId, media);
+      res.json({res: true})
+    }else{
+      res.json({res: false})
+    }
+  }
+  else {
+    res.json({res: false, user: false})
+  }
+  
+})
 
 
 module.exports = router;
