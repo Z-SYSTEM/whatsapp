@@ -2,6 +2,7 @@ var axios = require('axios');
 require('dotenv').config()
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
+const { postJson, postJSON } = require('./utils');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -26,7 +27,22 @@ whatsapp.on('ready', () => {
 });
 
 
-whatsapp.on('message', async(msg) => {
+whatsapp.on('call', async(call) => {
+  
+  call.reject()  
+  
+  var data = JSON.stringify(
+    {
+      'phoneNumber': `${call.from}`,
+      'message': `Llamada recibida del número: ${call.from}` ,
+      'type' : 'call'
+    }
+  );
+  postJSON(data).then()
+ 
+})
+
+whatsapp.on( 'message', async(msg) => {
   
   const match = msg.from.match(/^([^@]+)@/);
   const phoneNumber = match ? match[1] : null;
@@ -37,6 +53,7 @@ whatsapp.on('message', async(msg) => {
         // VOICE = 'ptt',
         // IMAGE = 'image',
         // VIDEO = 'video',
+        // DOCUMENT = 'document'
   switch (msg.type ) {
     case 'image':
       msgType = 'image'
@@ -44,13 +61,11 @@ whatsapp.on('message', async(msg) => {
     case 'audio':
       msgType = 'audio'
       break;
-  
+    
     default:
       msgType = 'chat'
       break;
   }
-  
-
   var data = JSON.stringify(
     {
       'phoneNumber': `${phoneNumber}`,
@@ -58,25 +73,7 @@ whatsapp.on('message', async(msg) => {
       'type' : msgType
     }
   );
-
- var config = {
-    method: 'POST',
-    url: process.env.ONMESSAGE,
-    headers: { 
-       'Content-type': 'application/json'
-    },
-    data : data
- };
- 
-// console.log(msg.rawData)
-
- axios(config)
- .then(function (response) {
-    console.log(JSON.stringify(response.data));
- })
- .catch(function (error) {
-    console.log(error)
- });
+  postJSON(data)
 })
 
 module.exports = {whatsapp,MessageMedia};

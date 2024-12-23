@@ -2,6 +2,7 @@ require('dotenv').config()
 const {Router} = require('express');
 
 const {whatsapp, MessageMedia} = require('../lib/whatsapp');
+const { validUser } = require('../lib/utils');
 const router = Router();
 
 
@@ -75,6 +76,30 @@ router.post('/enviarMensajeUrl', async(req, res)=>{
     res.json({res: false, user: false})
   }
   
+})
+
+router.post('/sendFile',async(req,res) => {
+  
+  let isUserValid = await validUser(req.body.token)
+  console.log(isUserValid)
+
+  if (isUserValid) {
+    res.json({res: true})
+
+    // const chatId = tel.substring(1) + "@c.us";
+    // const number_details = await whatsapp.getNumberId(chatId);
+    // if(number_details){
+    //   const media = await MessageMedia.fromUrl(imgUrl,{unsafeMime:true})
+    //   await whatsapp.sendMessage(chatId, media);
+    //   res.json({res: true})
+    // }else{
+    //   res.json({res: false})
+    // }
+  }
+  else {
+    res.json({res: false, user: false})
+  }
+
 })
 
 

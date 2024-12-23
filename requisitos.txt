@@ -1,0 +1,18 @@
+Requisitos para ir probando chatBoot
+
+1- Endpoint para buscar x número de celular si es válido el cliente
+
+    Es válido el número, respondo con opciones de menú
+    
+        validar conversaciones abiertas (en SOPORTE??)
+        si no tiene abiertas mando opciones de autorespuestas
+            1- urgencia con atención humana
+                mando info del técnico
+            2- consulta técnica
+                envío enlaces a tutoriales
+        si tiene abiertas ?????
+
+    NO ES USUARIO VALIDO, lo rechazo, guardo número y no respondo más hasta habilitarlo
+        identificarlo y pedir problema
+        reenviar técnico
+
