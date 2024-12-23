@@ -38,7 +38,7 @@ whatsapp.on('call', async(call) => {
       'type' : 'call'
     }
   );
-  postJSON(data).then()
+  //postJSON(data)
  
 })
 
