@@ -49,6 +49,7 @@ whatsapp.on( 'message', async(msg) => {
   const match = msg.from.match(/^([^@]+)@/);
   const phoneNumber = match ? match[1] : null;
   let msgType = ''
+  let rsp 
   
   // según msg Type armo body
         // TEXT = 'chat',
@@ -78,8 +79,10 @@ whatsapp.on( 'message', async(msg) => {
     }
   );
   console.log('text to: ', data)
-  postJSON(data)
-  console.log('luego postJSON')
+  rsp = await postJSON(data)
+  
+  console.log('luego postJSON: ', rsp)
+
 })
 
 module.exports = {whatsapp,MessageMedia};
