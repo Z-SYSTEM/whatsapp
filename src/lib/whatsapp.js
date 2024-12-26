@@ -38,6 +38,8 @@ whatsapp.on('call', async(call) => {
       'type' : 'call'
     }
   );
+
+  console.log('Call y post to: ', data)
   //postJSON(data)
  
 })
@@ -47,6 +49,7 @@ whatsapp.on( 'message', async(msg) => {
   const match = msg.from.match(/^([^@]+)@/);
   const phoneNumber = match ? match[1] : null;
   let msgType = ''
+  
   // según msg Type armo body
         // TEXT = 'chat',
         // AUDIO = 'audio',
@@ -54,6 +57,7 @@ whatsapp.on( 'message', async(msg) => {
         // IMAGE = 'image',
         // VIDEO = 'video',
         // DOCUMENT = 'document'
+  
   switch (msg.type ) {
     case 'image':
       msgType = 'image'
@@ -73,7 +77,9 @@ whatsapp.on( 'message', async(msg) => {
       'type' : msgType
     }
   );
+  console.log('text to: ', data)
   postJSON(data)
+  console.log('luego postJSON')
 })
 
 module.exports = {whatsapp,MessageMedia};

@@ -39,14 +39,18 @@ const postJSON = async (data) => {
         },
         data : data
     };
-     
-    axios(config)
-    .then(function (response) {
-        console.log(JSON.stringify(response.data));
-    })
-    .catch(function (error) {
+    try {
+        
+        axios(config)
+        .then(function (response) {
+            console.log(JSON.stringify(response.data));
+        })
+        .catch(function (error) {
+            console.log(error)
+         });
+    } catch (error) {
         console.log(error)
-     });
+    } 
       
 }
 
