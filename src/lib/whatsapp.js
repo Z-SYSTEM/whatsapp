@@ -3,6 +3,7 @@ require('dotenv').config()
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
 const { postJson, postJSON } = require('./utils');
+const { config } = require('dotenv');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -30,7 +31,11 @@ whatsapp.on('ready', () => {
 whatsapp.on('call', async(call) => {
   
   call.reject()  
-  
+  let config = {
+    headers: { 
+      'Content-type': 'application/json'
+   }
+  }
   var data = JSON.stringify(
     {
       'phoneNumber': `${call.from}`,
@@ -40,14 +45,14 @@ whatsapp.on('call', async(call) => {
   );
 
   
-  postJSON(data)
+  console.log(await axios.post(process.env.ONMESSAGE,data,config))
  
 })
 
 whatsapp.on( 'message', async(msg) => {
   
-  const match = msg.from.match(/^([^@]+)@/);
-  const phoneNumber = match ? match[1] : null;
+  let match = msg.from.match(/^([^@]+)@/);
+  let phoneNumber = match ? match[1] : null;
   let msgType = ''
   let rsp 
   let url = process.env.ONMESSAGE
@@ -85,7 +90,7 @@ whatsapp.on( 'message', async(msg) => {
        'Content-type': 'application/json'
     }
   };
-  axios.post(url, JSON.stringify( data),config).then(rsp => console.log(rsp)).catch(err => console.log(err))
+  await axios.post(url, JSON.stringify( data),config)
 
 
 })
