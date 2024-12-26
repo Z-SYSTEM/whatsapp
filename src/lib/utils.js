@@ -30,20 +30,20 @@ const validUser = async (tokenUser) => {
 
 }
 
-const postJSON = async (data) => {
-    var config = {
+const postJSON = async (dataJSON) => {
+    let config = {
         method: 'POST',
         url: process.env.ONMESSAGE,
         headers: { 
            'Content-type': 'application/json'
         },
-        data : data
+        data : dataJSON
     };
     try {
         
         axios(config)
         .then(function (response) {
-            console.log(JSON.stringify(response.data));
+            console.log(response.data);
         })
         .catch(function (error) {
             console.log(error)
