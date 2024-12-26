@@ -31,26 +31,18 @@ const validUser = async (tokenUser) => {
 }
 
 const postJSON = async (dataJSON) => {
+    let rspSrv
     let config = {
-        method: 'POST',
-        url: process.env.ONMESSAGE,
         headers: { 
            'Content-type': 'application/json'
-        },
-        data : dataJSON
-    };
-    try {
+        }
         
-        axios(config)
-        .then(function (response) {
-            console.log(response.data);
-        })
-        .catch(function (error) {
-            console.log(error)
-         });
-    } catch (error) {
-        console.log(error)
-    } 
+    };
+    
+        
+    rspSrv = await axios.post(process.env.ONMESSAGE, JSON.stringify(dataJSON),config)
+    console.log(rspSrv)    
+    
       
 }
 
