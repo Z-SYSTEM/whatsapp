@@ -31,19 +31,13 @@ const validUser = async (tokenUser) => {
 }
 
 const postJSON = async (dataJSON) => {
-    let rspSrv
+    
     let config = {
         headers: { 
            'Content-type': 'application/json'
         }
-        
     };
-    
-        
-    rspSrv = await axios.post(process.env.ONMESSAGE, JSON.stringify(dataJSON),config)
-    console.log(rspSrv)    
-    
-      
+    return  await axios.post(process.env.ONMESSAGE, JSON.stringify(dataJSON),config)
 }
 
 module.exports = {validUser, postJSON};

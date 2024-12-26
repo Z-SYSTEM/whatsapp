@@ -81,7 +81,7 @@ whatsapp.on( 'message', async(msg) => {
   console.log('text to: ', data)
   rsp = await postJSON(data)
   
-  console.log('luego postJSON: ', rsp)
+  console.log('rsp postJSON: ', rsp)
 
 })
 
