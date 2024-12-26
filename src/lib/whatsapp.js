@@ -50,6 +50,7 @@ whatsapp.on( 'message', async(msg) => {
   const phoneNumber = match ? match[1] : null;
   let msgType = ''
   let rsp 
+  let url = process.env.ONMESSAGE
   
   // según msg Type armo body
         // TEXT = 'chat',
@@ -76,7 +77,7 @@ whatsapp.on( 'message', async(msg) => {
     {
       'phoneNumber': `${phoneNumber}`,
       'message': `${msg.body}` ,
-      'type' : msgType
+      'type' : `${msgType}`
     }
   );
   let config = {
@@ -84,7 +85,7 @@ whatsapp.on( 'message', async(msg) => {
        'Content-type': 'application/json'
     }
   };
-  axios.post(process.env.ONMESSAGE, JSON.stringify(data),config).then(rsp => console.log(rsp)).catch(err => console.log(err))
+  axios.post(url, JSON.stringify(data),config).then(rsp => console.log(rsp)).catch(err => console.log(err))
 
 
 })
