@@ -73,19 +73,19 @@ whatsapp.on( 'message', async(msg) => {
       break;
   }
 
-  let data = JSON.stringify(
+  let data = 
     {
       'phoneNumber': `${phoneNumber}`,
       'message': `${msg.body}` ,
       'type' : `${msgType}`
     }
-  );
+  
   let config = {
     headers: { 
        'Content-type': 'application/json'
     }
   };
-  axios.post(url, JSON.stringify(data),config).then(rsp => console.log(rsp)).catch(err => console.log(err))
+  axios.post(url, JSON.stringify( data),config).then(rsp => console.log(rsp)).catch(err => console.log(err))
 
 
 })
