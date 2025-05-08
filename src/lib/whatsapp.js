@@ -29,69 +29,68 @@ whatsapp.on('ready', () => {
 
 
 whatsapp.on('call', async(call) => {
-  
-  call.reject()  
-  let config = {
-    headers: { 
-      'Content-type': 'application/json'
-   }
-  }
-  var data = JSON.stringify(
-    {
-      'phoneNumber': `${call.from}`,
-      'message': `Llamada recibida del número: ${call.from}` ,
-      'type' : 'call'
+  // Si tengo definido process.env.ONMESSAGE
+  if (process.env.ONMESSAGE) {
+    call.reject()  
+    let config = {
+        headers: { 
+            'Content-type': 'application/json'
+        }
     }
-  );
-
-  
-  console.log(await axios.post(process.env.ONMESSAGE,data,config))
- 
+    var data = JSON.stringify(
+        {
+            'phoneNumber': `${call.from}`,
+            'message': `Llamada recibida del número: ${call.from}` ,
+            'type' : 'call'
+        }
+    );
+    console.log(await axios.post(process.env.ONMESSAGE,data,config))
+    } 
 })
 
 whatsapp.on( 'message', async(msg) => {
-  
-  let match = msg.from.match(/^([^@]+)@/);
-  let phoneNumber = match ? match[1] : null;
-  let msgType = ''
-  let rsp 
-  let url = process.env.ONMESSAGE
-  
-  // según msg Type armo body
+    
+    if (process.env.ONMESSAGE) {
+        let match = msg.from.match(/^([^@]+)@/);
+        let phoneNumber = match ? match[1] : null;
+        let msgType = ''
+        let rsp 
+        let url = process.env.ONMESSAGE
+
+        // según msg Type armo body
         // TEXT = 'chat',
         // AUDIO = 'audio',
         // VOICE = 'ptt',
         // IMAGE = 'image',
         // VIDEO = 'video',
         // DOCUMENT = 'document'
-  
-  switch (msg.type ) {
-    case 'image':
-      msgType = 'image'
-      break;
-    case 'audio':
-      msgType = 'audio'
-      break;
-    
-    default:
-      msgType = 'chat'
-      break;
-  }
 
-  let data = 
-    {
-      'phoneNumber': `${phoneNumber}`,
-      'message': `${msg.body}` ,
-      'type' : `${msgType}`
-    }
-  
-  let config = {
-    headers: { 
-       'Content-type': 'application/json'
-    }
-  };
-  await axios.post(url, JSON.stringify( data),config)
+        switch (msg.type ) {
+        case 'image':
+            msgType = 'image'
+            break;
+        case 'audio':
+            msgType = 'audio'
+            break;
 
+        default:
+            msgType = 'chat'
+            break;
+        }
+
+        let data =  {
+            'phoneNumber': `${phoneNumber}`,
+            'message': `${msg.body}` ,
+            'type' : `${msgType}`
+        }
+
+        let config = {
+            headers: { 
+                'Content-type': 'application/json'
+                }
+        };
+        await axios.post(url, JSON.stringify( data),config)
+    }
 
 })
 
