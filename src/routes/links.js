@@ -15,7 +15,7 @@ router.post('/sendText', async(req, res)=>{
     let userIsValid = false
     let tokenUser = req.body.token
     let data = `token = ${tokenUser}`
-
+   
     if( process.env.HOST ) {
 
         // Validar usuario cdo el token es !== TOKENACCESS
@@ -32,6 +32,7 @@ router.post('/sendText', async(req, res)=>{
         }
 
         if (userIsValid) {
+            console.log(`Enviando mensaje a ${req.body.phoneNumber} con token ${tokenUser}`)
             let tel = req.body.phoneNumber
             let chatId = tel.substring(1) + "@c.us";
             let number_details = await whatsapp.getNumberId(chatId);
@@ -104,5 +105,43 @@ router.post('/sendFile',async(req,res) => {
 
 })
 
+
+router.post('/send', async (req, res) => {
+    // Requiere header Authorization: Bearer <token>
+    // phoneNumber y message vienen en el body
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ res: false, error: 'No token provided' });
+    }
+
+    const tokenUser = authHeader.split(' ')[1];
+    const validToken = process.env.TOKENACCESS;
+
+    if (tokenUser !== validToken) {
+        return res.status(403).json({ res: false, error: 'Invalid token' });
+    }
+
+    const { phoneNumber, message } = req.body;
+
+    if (!phoneNumber || !message) {
+        return res.status(400).json({ res: false, error: 'Missing phoneNumber or message' });
+    }
+
+    try {
+        const chatId = phoneNumber.substring(1) + "@c.us";
+        const number_details = await whatsapp.getNumberId(chatId);
+
+        if (number_details) {
+            await whatsapp.sendMessage(chatId, message);
+            return res.json({ res: true });
+        } else {
+            return res.status(404).json({ res: false, error: 'Number not found on WhatsApp' });
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        return res.status(500).json({ res: false, error: 'Internal server error' });
+    }
+});
 
 module.exports = router;
