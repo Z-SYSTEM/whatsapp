@@ -1,115 +1,12 @@
 require('dotenv').config()
 const {Router} = require('express');
-
 const {whatsapp, MessageMedia} = require('../lib/whatsapp');
-const { validUser } = require('../lib/utils');
 const router = Router();
-
-
-router.post('/sendText', async(req, res)=>{    
-    // Ruta con parametros en body
-    // phoneNumber: debe llevar +549 con el número!
-    // messsage: texto a enviar
-    // token
-
-    let userIsValid = false
-    let tokenUser = req.body.token
-    let data = `token = ${tokenUser}`
-   
-    if( process.env.HOST ) {
-
-        // Validar usuario cdo el token es !== TOKENACCESS
-        if (tokenUser == process.env.TOKENACCESS) {
-            userIsValid = true
-        }
-        else {
-            // Sólo valido cdo tokenAccess es de algún cliente!
-            userIsValid = await fetch(process.env.HOST, {
-                method: 'POST',
-                body: JSON.stringify(data),
-                headers: { 'Content-type': 'application/json' }
-            })
-        }
-
-        if (userIsValid) {
-            console.log(`Enviando mensaje a ${req.body.phoneNumber} con token ${tokenUser}`)
-            let tel = req.body.phoneNumber
-            let chatId = tel.substring(1) + "@c.us";
-            let number_details = await whatsapp.getNumberId(chatId);
-            if (number_details) {
-            let mensaje = req.body.message
-            await whatsapp.sendMessage(chatId, mensaje);
-            res.json({res: true})
-            } else {
-               res.json({res: false})
-            }
-        } else {
-            res.json({res: false, user: false})
-        }
-    }
-
-})
-
-router.post('/enviarMensajeUrl', async(req, res)=>{
-
-    const tel = req.body.phoneNumber
-    const imgUrl = req.body.imgUrl
-    const tokenUser = req.body.token
-    const data = `token = ${tokenUser}`
-
-    if( process.env.HOST ) {
-        // Sólo valido cdo tokenAccess es de algún cliente!
-        const userIsValid = await  fetch(process.env.HOST, {
-            method: 'POST',
-            body: JSON.stringify(data),
-            headers: { 'Content-type': 'application/json' }
-        })
-        if (userIsValid) {
-            const chatId = tel.substring(1) + "@c.us";
-            const number_details = await whatsapp.getNumberId(chatId);
-            if(number_details) {
-                const media = await MessageMedia.fromUrl(imgUrl,{unsafeMime:true})
-                await whatsapp.sendMessage(chatId, media);
-                res.json({res: true})
-            } else {
-                res.json({res: false})
-            }
-        } else {
-            res.json({res: false, user: false})
-        }
-    }
-
-})
-
-router.post('/sendFile',async(req,res) => {
-  
-  let isUserValid = await validUser(req.body.token)
-  console.log(isUserValid)
-
-  if (isUserValid) {
-    res.json({res: true})
-
-    // const chatId = tel.substring(1) + "@c.us";
-    // const number_details = await whatsapp.getNumberId(chatId);
-    // if(number_details){
-    //   const media = await MessageMedia.fromUrl(imgUrl,{unsafeMime:true})
-    //   await whatsapp.sendMessage(chatId, media);
-    //   res.json({res: true})
-    // }else{
-    //   res.json({res: false})
-    // }
-  }
-  else {
-    res.json({res: false, user: false})
-  }
-
-})
-
 
 router.post('/send', async (req, res) => {
     // Requiere header Authorization: Bearer <token>
-    // phoneNumber y message vienen en el body
-
+    // phoneNumber, message, imageUrl y opcionalmente pdfUrl vienen en el body
+    console.log('Received request to /send');
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ res: false, error: 'No token provided' });
@@ -122,10 +19,10 @@ router.post('/send', async (req, res) => {
         return res.status(403).json({ res: false, error: 'Invalid token' });
     }
 
-    const { phoneNumber, message } = req.body;
+    const { phoneNumber, message, imageUrl, pdfUrl } = req.body;
 
-    if (!phoneNumber || !message) {
-        return res.status(400).json({ res: false, error: 'Missing phoneNumber or message' });
+    if (!phoneNumber || (!message && !imageUrl && !pdfUrl)) {
+        return res.status(400).json({ res: false, error: 'Missing phoneNumber and message, imageUrl or pdfUrl' });
     }
 
     try {
@@ -133,8 +30,16 @@ router.post('/send', async (req, res) => {
         const number_details = await whatsapp.getNumberId(chatId);
 
         if (number_details) {
-            await whatsapp.sendMessage(chatId, message);
-            return res.json({ res: true });
+            if (pdfUrl) {
+                const media = await MessageMedia.fromUrl(pdfUrl, { mimeType: 'application/pdf' });
+                await whatsapp.sendMessage(chatId, media, { caption: message || '' });
+            } else if (imageUrl) {
+                const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+                await whatsapp.sendMessage(chatId, media, { caption: message || '' });
+            } else {
+                await whatsapp.sendMessage(chatId, message);
+            }
+            return res.json({ status: true });
         } else {
             return res.status(404).json({ res: false, error: 'Number not found on WhatsApp' });
         }

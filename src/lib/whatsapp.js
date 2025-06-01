@@ -2,7 +2,6 @@ var axios = require('axios');
 require('dotenv').config()
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
-const { postJson, postJSON } = require('./utils');
 const { config } = require('dotenv');
 
 const whatsapp = new Client({
