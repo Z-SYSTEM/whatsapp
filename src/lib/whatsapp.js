@@ -47,51 +47,39 @@ whatsapp.on('call', async(call) => {
     } 
 })
 
-whatsapp.on( 'message', async(msg) => {
-    
+whatsapp.on( 'message', async (msg) => {
     if (process.env.ONMESSAGE) {
         let match = msg.from.match(/^([^@]+)@/);
         let phoneNumber = match ? match[1] : null;
-        let msgType = ''
-        let rsp 
-        let url = process.env.ONMESSAGE
+        let url = process.env.ONMESSAGE;
+        let data = {
+            phoneNumber: `${phoneNumber}`,
+            type: '',
+        };
 
-        // según msg Type armo body
-        // TEXT = 'chat',
-        // AUDIO = 'audio',
-        // VOICE = 'ptt',
-        // IMAGE = 'image',
-        // VIDEO = 'video',
-        // DOCUMENT = 'document'
-
-        switch (msg.type ) {
-        case 'image':
-            msgType = 'image'
-            break;
-        case 'audio':
-            msgType = 'audio'
-            break;
-
-        default:
-            msgType = 'chat'
-            break;
-        }
-
-        let data =  {
-            'phoneNumber': `${phoneNumber}`,
-            'message': `${msg.body}` ,
-            'type' : `${msgType}`
+        switch (msg.type) {
+            case 'image':
+                data.type = 'image';
+                data.imagen = msg.hasMedia ? true : false;
+                data.texto = msg.body || '';
+                break;
+            case 'audio':
+                data.type = 'audio';
+                break;
+            default:
+                data.type = 'chat';
+                data.texto = msg.body || '';
+                break;
         }
 
         let config = {
-            headers: { 
+            headers: {
                 'Content-type': 'application/json'
-                }
+            }
         };
-        await axios.post(url, JSON.stringify( data),config)
+        await axios.post(url, JSON.stringify(data), config);
     }
-
-})
+});
 
 module.exports = {whatsapp,MessageMedia};
 
