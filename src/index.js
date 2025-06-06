@@ -6,6 +6,9 @@ const app = express()
 
 const puerto = parseInt(process.env.PORT);
 
+// Lee el intervalo de chequeo desde .env (en minutos), por defecto 2 si no está definido
+const CHECK_INTERVAL_MINUTES = parseInt(process.env.WHATSAPP_CHECK_INTERVAL_MINUTES) || 2;
+
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
@@ -37,4 +40,4 @@ setInterval(async () => {
     } else {
         logger.info('WhatsApp client is ready (interval check).');
     }
-}, 2 * 60 * 1000); // cada 2 minutos
+}, CHECK_INTERVAL_MINUTES * 60 * 1000); // configurable por .env

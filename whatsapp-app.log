@@ -93,3 +93,18 @@
 2025-06-06T13:42:14.166Z [info]: Received message from 5491134162849-1542479207@g.us of type revoked
 2025-06-06T13:42:14.166Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"5491134162849-1542479207","type":"chat","texto":""}
 2025-06-06T13:42:14.439Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:43:32.891Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:43:50.154Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:43:50.155Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"status","type":"image","imagen":true,"texto":""}
+2025-06-06T13:43:50.357Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:44:33.304Z [info]: Received message from 5491162137713@c.us of type ptt
+2025-06-06T13:44:33.305Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"5491162137713","type":"chat","texto":""}
+2025-06-06T13:44:33.587Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:45:12.514Z [info]: Received message from 120363207482585736@g.us of type chat
+2025-06-06T13:45:12.514Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"120363207482585736","type":"chat","texto":"🔥 ¡OFERTÓN de la semana! 🔥\n🥩 LOMO con cordón a solo $22.800\n🎯 ¡Una carne premium para lucirte en la parrilla o en la cocina!\n\n📅 Promo válida del 6/6 al 15/6 o hasta agotar stock\n⚠️ ¡No te quedes sin el tuyo!\n\n📩 Escribime y te lo reservo YA!"}
+2025-06-06T13:45:12.717Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:45:18.046Z [info]: Received message from 120363207482585736@g.us of type image
+2025-06-06T13:45:18.047Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"120363207482585736","type":"image","imagen":true,"texto":""}
+2025-06-06T13:45:18.294Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:45:32.880Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:47:32.906Z [info]: WhatsApp client is ready (interval check).
