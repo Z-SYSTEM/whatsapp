@@ -1,0 +1,63 @@
+2025-06-06T13:08:19.600Z [info]: WhatsApp client is ready!
+2025-06-06T13:08:27.475Z [info]: Health check on /test
+2025-06-06T13:09:38.824Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:09:39.180Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:11:47.513Z [info]: WhatsApp client is ready!
+2025-06-06T13:11:53.096Z [info]: Health check on /test
+2025-06-06T13:11:56.804Z [info]: Health check on /test
+2025-06-06T13:12:01.870Z [info]: Received request to /send
+2025-06-06T13:12:01.870Z [info]: Looking up WhatsApp ID for 5491141413338@c.us
+2025-06-06T13:12:02.144Z [info]: Sending text message to 5491141413338@c.us
+2025-06-06T13:12:02.154Z [info]: Message sent to 5491141413338@c.us
+2025-06-06T13:12:21.462Z [info]: Received request to /send
+2025-06-06T13:12:21.462Z [info]: Looking up WhatsApp ID for 5491141413338@c.us
+2025-06-06T13:12:21.733Z [info]: Sending image to 5491141413338@c.us
+2025-06-06T13:12:22.720Z [info]: Message sent to 5491141413338@c.us
+2025-06-06T13:13:39.360Z [warn]: WhatsApp client not ready (interval), trying to re-initialize...
+2025-06-06T13:14:56.398Z [info]: WhatsApp client is ready!
+2025-06-06T13:16:47.942Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:17:33.522Z [info]: Received message from status@broadcast of type chat
+2025-06-06T13:17:34.932Z [error]: Error posting message info: AxiosError: Request failed with status code 500
+    at settle (C:\laragon\www\whatsapp\node_modules\axios\dist\node\axios.cjs:2049:12)
+    at IncomingMessage.handleStreamEnd (C:\laragon\www\whatsapp\node_modules\axios\dist\node\axios.cjs:3166:11)
+    at IncomingMessage.emit (node:events:525:35)
+    at endReadableNT (node:internal/streams/readable:1359:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at Axios.request (C:\laragon\www\whatsapp\node_modules\axios\dist\node\axios.cjs:4276:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (C:\laragon\www\whatsapp\src\lib\whatsapp.js:116:13)
+2025-06-06T13:18:47.942Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:19:01.040Z [info]: Health check on /test
+2025-06-06T13:19:08.378Z [info]: Received request to /send
+2025-06-06T13:19:08.378Z [info]: Looking up WhatsApp ID for 5491141413338@c.us
+2025-06-06T13:19:08.658Z [info]: Sending text message to 5491141413338@c.us
+2025-06-06T13:19:08.668Z [info]: Message sent to 5491141413338@c.us
+2025-06-06T13:20:47.954Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:22:12.219Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:22:12.440Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:22:47.968Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:22:54.331Z [info]: Received message from 5491141413338@c.us of type chat
+2025-06-06T13:22:54.827Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:24:36.871Z [info]: Received message from 5491141413338@c.us of type chat
+2025-06-06T13:24:37.095Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:24:47.964Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:26:37.071Z [info]: Received message from 5491141413338@c.us of type chat
+2025-06-06T13:26:37.289Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:26:47.981Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:28:35.058Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:28:35.271Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:28:47.975Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:29:40.050Z [info]: WhatsApp client is ready!
+2025-06-06T13:29:45.822Z [info]: Received message from 5491141413338@c.us of type chat
+2025-06-06T13:29:45.822Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"5491141413338","type":"chat","texto":"Gracias!! 123"}
+2025-06-06T13:29:46.125Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:31:32.829Z [info]: WhatsApp client is ready (interval check).
+2025-06-06T13:31:41.713Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:31:41.715Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"status","type":"image","imagen":true,"texto":""}
+2025-06-06T13:31:41.759Z [info]: Received message from 5491141413338@c.us of type chat
+2025-06-06T13:31:41.760Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"5491141413338","type":"chat","texto":"Capo 456"}
+2025-06-06T13:31:41.970Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:31:42.022Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage
+2025-06-06T13:31:48.146Z [info]: Received message from status@broadcast of type image
+2025-06-06T13:31:48.146Z [info]: Posting message to ONMESSAGE: {"phoneNumber":"status","type":"image","imagen":true,"texto":""}
+2025-06-06T13:31:48.380Z [info]: Posted message info to http://soporte.test/api/wclient/onmessage

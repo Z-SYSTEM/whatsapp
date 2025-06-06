@@ -16,6 +16,8 @@ const whatsapp = new Client({
     
 });
 
+const whatsappState = { isReady: false };
+
 whatsapp.on('qr', qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
@@ -24,14 +26,37 @@ whatsapp.on('qr', qr => {
 
 whatsapp.on('ready', () => {
     logger.info('WhatsApp client is ready!');
+    whatsappState.isReady = true;
 });
+
+async function notifyDown(reason) {
+    if (process.env.ONDOWN) {
+        const data = {
+            message: 'WhatsApp client is down',
+            reason: reason || 'unknown',
+            timestamp: new Date().toISOString()
+        };
+        try {
+            await axios.post(process.env.ONDOWN, data, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            logger.info(`Posted ONDOWN info to ${process.env.ONDOWN}`);
+        } catch (err) {
+            logger.error(`Error posting ONDOWN info: ${err.stack || err}`);
+        }
+    }
+}
 
 whatsapp.on('disconnected', (reason) => {
     logger.warn(`WhatsApp client disconnected: ${reason}`);
+    whatsappState.isReady = false;
+    notifyDown(reason);
 });
 
 whatsapp.on('auth_failure', (msg) => {
     logger.error(`Authentication failure: ${msg}`);
+    whatsappState.isReady = false;
+    notifyDown(msg);
 });
 
 whatsapp.on('call', async(call) => {
@@ -82,6 +107,8 @@ whatsapp.on( 'message', async (msg) => {
                 break;
         }
 
+        logger.info(`Posting message to ONMESSAGE: ${JSON.stringify(data)}`);
+
         let config = {
             headers: {
                 'Content-type': 'application/json'
@@ -96,7 +123,7 @@ whatsapp.on( 'message', async (msg) => {
     }
 });
 
-module.exports = {whatsapp,MessageMedia};
+module.exports = { whatsapp, MessageMedia, whatsappState };
 
 
 
