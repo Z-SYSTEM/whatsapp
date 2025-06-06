@@ -3,6 +3,7 @@ require('dotenv').config()
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
 const { config } = require('dotenv');
+const logger = require('./logger');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -16,38 +17,47 @@ const whatsapp = new Client({
 });
 
 whatsapp.on('qr', qr => {
-  qrcode.generate(qr, {
-      small: true
-  });
-  console.log(qr)
+    logger.info('QR code generated for WhatsApp session');
+    qrcode.generate(qr, { small: true });
+    logger.info(qr);
 });
 
 whatsapp.on('ready', () => {
-  console.log('Client is ready!');
+    logger.info('WhatsApp client is ready!');
 });
 
+whatsapp.on('disconnected', (reason) => {
+    logger.warn(`WhatsApp client disconnected: ${reason}`);
+});
+
+whatsapp.on('auth_failure', (msg) => {
+    logger.error(`Authentication failure: ${msg}`);
+});
 
 whatsapp.on('call', async(call) => {
-  // Si tengo definido process.env.ONMESSAGE
-  if (process.env.ONMESSAGE) {
-    call.reject()  
-    let config = {
-        headers: { 
-            'Content-type': 'application/json'
+    logger.info(`Incoming call from ${call.from}`);
+    // Si tengo definido process.env.ONMESSAGE
+    if (process.env.ONMESSAGE) {
+        call.reject();
+        let config = {
+            headers: { 'Content-type': 'application/json' }
+        }
+        var data = JSON.stringify({
+            'phoneNumber': `${call.from}`,
+            'message': `Llamada recibida del número: ${call.from}`,
+            'type' : 'call'
+        });
+        logger.info(`Posting call info to ${process.env.ONMESSAGE}`);
+        try {
+            await axios.post(process.env.ONMESSAGE, data, config);
+        } catch (err) {
+            logger.error(`Error posting call info: ${err.stack || err}`);
         }
     }
-    var data = JSON.stringify(
-        {
-            'phoneNumber': `${call.from}`,
-            'message': `Llamada recibida del número: ${call.from}` ,
-            'type' : 'call'
-        }
-    );
-    console.log(await axios.post(process.env.ONMESSAGE,data,config))
-    } 
-})
+});
 
 whatsapp.on( 'message', async (msg) => {
+    logger.info(`Received message from ${msg.from} of type ${msg.type}`);
     if (process.env.ONMESSAGE) {
         let match = msg.from.match(/^([^@]+)@/);
         let phoneNumber = match ? match[1] : null;
@@ -77,7 +87,12 @@ whatsapp.on( 'message', async (msg) => {
                 'Content-type': 'application/json'
             }
         };
-        await axios.post(url, JSON.stringify(data), config);
+        try {
+            await axios.post(url, JSON.stringify(data), config);
+            logger.info(`Posted message info to ${url}`);
+        } catch (err) {
+            logger.error(`Error posting message info: ${err.stack || err}`);
+        }
     }
 });
 
