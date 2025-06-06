@@ -1,7 +1,7 @@
 require('dotenv').config()
 const express = require('express');
-const { whatsapp, whatsappState } = require('./src/lib/whatsapp');
-const logger = require('./src/lib/logger');
+const { whatsapp, whatsappState } = require('./lib/whatsapp');
+const logger = require('./lib/logger');
 const app = express()
 
 const puerto = parseInt(process.env.PORT);
@@ -10,7 +10,7 @@ app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 
 //rutas
-app.use('/api', require('./src/routes/links'));
+app.use('/api', require('./routes/links'));
 
 whatsapp.initialize()
 
