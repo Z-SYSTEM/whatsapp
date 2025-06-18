@@ -59,22 +59,34 @@ whatsapp.on('auth_failure', (msg) => {
     notifyDown(msg);
 });
 
-whatsapp.on('call', async(call) => {
-    logger.info(`Incoming call from ${call.from}`);
-    // Si tengo definido process.env.ONMESSAGE
+whatsapp.on('call', async (call) => {
+    logger.info(`Incoming call from ${call.from} (${call.isVideo ? 'video' : 'voice'})`);
+    // Rechaza la llamada
+    await call.reject();
+    logger.info(`Call from ${call.from} rejected.`);
+
+    // Envía mensaje al usuario que llamó
+    try {
+        await whatsapp.sendMessage(call.from, 'No se pueden recibir llamadas');
+        logger.info(`Sent "No se pueden recibir llamadas" to ${call.from}`);
+    } catch (err) {
+        logger.error(`Error sending call rejection message: ${err.stack || err}`);
+    }
+
+    // (Opcional) Notifica a ONMESSAGE si está configurado
     if (process.env.ONMESSAGE) {
-        call.reject();
-        let config = {
-            headers: { 'Content-type': 'application/json' }
-        }
-        var data = JSON.stringify({
-            'phoneNumber': `${call.from}`,
-            'message': `Llamada recibida del número: ${call.from}`,
-            'type' : 'call'
-        });
-        logger.info(`Posting call info to ${process.env.ONMESSAGE}`);
+        const data = {
+            phoneNumber: `${call.from}`,
+            message: `Llamada rechazada del número: ${call.from}`,
+            type: 'call',
+            isVideo: call.isVideo,
+            timestamp: new Date().toISOString()
+        };
         try {
-            await axios.post(process.env.ONMESSAGE, data, config);
+            await axios.post(process.env.ONMESSAGE, data, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            logger.info(`Posted call info to ${process.env.ONMESSAGE}`);
         } catch (err) {
             logger.error(`Error posting call info: ${err.stack || err}`);
         }
