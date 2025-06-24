@@ -1,19 +1,20 @@
 {
-  "name": "mensajes",
+  "name": "z.whatsapp.bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Envío y recepción de mensajes de WhatsApp usando whatsapp-web.js",
   "main": "index.js",
   "scripts": {
     "dev": "node src/index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Pablo Zagni",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.8",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.5.0",
+    "puppeteer": "^24.10.2",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.23.0",
     "winston": "^3.17.0",

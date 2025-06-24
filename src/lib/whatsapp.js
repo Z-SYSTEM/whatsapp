@@ -7,8 +7,9 @@ const logger = require('./logger');
 
 const whatsapp = new Client({
   puppeteer: {
-		args: ['--no-sandbox', '--disable-setuid-sandbox'],
-	},
+    executablePath: executablePath(),
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  },
   authStrategy: new LocalAuth({
     clientId: "cliente-2"
   }),
