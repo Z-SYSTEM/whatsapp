@@ -31,9 +31,16 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', reason);
+
+    // No salir, solo loguear
+    if (reason && reason.message && reason.message.includes('Failed to launch the browser process')) {
+        logger.error('Bloqueando salida por fallo de Puppeteer');
+        return;
+    }
 });
 process.on('SIGINT', async () => {
     logger.info('Apagando servidor por SIGINT...');
+    console.trace('[DEBUG] SIGINT recibido');
     await whatsapp.destroy();
     process.exit(0);
 });
