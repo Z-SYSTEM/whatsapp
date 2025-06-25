@@ -2,8 +2,10 @@ const { createLogger, format, transports } = require('winston');
 const fs = require('fs');
 const path = require('path');
 
-// Asegura que la carpeta logs exista
-const logDir = path.join(__dirname, '../../logs');
+// Carpeta de logs relativa al directorio donde se ejecuta la app
+const logDir = path.join(process.cwd(), 'logs');
+
+// Asegura que exista la carpeta
 if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
 }
