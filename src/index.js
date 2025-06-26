@@ -39,7 +39,13 @@ process.on('unhandledRejection', (reason, promise) => {
     }
 });
 process.on('SIGINT', async () => {
-    logger.info('Apagando servidor por SIGINT...');
+    const motivo = 'SIGINT (Ctrl+C o señal de apagado)';
+    const fecha = new Date().toISOString();
+    const uptime = process.uptime();
+    const usuario = process.env.USER || process.env.USERNAME || 'desconocido';
+
+    logger.warn(`Apagando servidor por ${motivo}`);
+    logger.info(`Motivo: ${motivo} | Fecha: ${fecha} | Uptime: ${uptime}s | Usuario: ${usuario} | PID: ${process.pid}, PPID: ${process.ppid}`);
     console.trace('[DEBUG] SIGINT recibido');
     await whatsapp.destroy();
     process.exit(0);

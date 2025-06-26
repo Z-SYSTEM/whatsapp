@@ -42,6 +42,13 @@ router.post('/send', async (req, res) => {
     try {
         const chatId = phoneNumber.substring(1) + "@c.us";
         logger.info(`Looking up WhatsApp ID for ${chatId}`);
+
+        // Control de destinatarios no válidos
+        if (chatId === 'status@c.us' || chatId === 'status@broadcast') {
+            logger.warn('Intento de enviar mensaje a destinatario no válido:', chatId);
+            return res.status(400).json({ error: 'Destinatario no permitido.' });
+        }
+
         const number_details = await whatsapp.getNumberId(chatId);
 
         if (number_details) {

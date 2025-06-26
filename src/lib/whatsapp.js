@@ -95,31 +95,80 @@ whatsapp.on('call', async (call) => {
 
 whatsapp.on( 'message', async (msg) => {
     logger.info(`Received message from ${msg.from} of type ${msg.type}`);
+
+    // Filtrar mensajes de estado (status@broadcast y similares)
+    if (msg.from === 'status@broadcast' || msg.from === 'status@c.us') {
+        logger.info(`Estado ignorado de ${msg.from} | type: ${msg.type} | id: ${msg.id ? msg.id._serialized : 'N/A'}`);
+        return;
+    }
+
+    // Tipos a ignorar
+    const ignoredTypes = [
+        'sticker', 'call_log', 'e2e_notification', 'revoked', 'multi_vcard',
+        'order', 'product', 'list', 'buttons_response', 'list_response',
+        'poll', 'poll_response'
+    ];
+
+    if (ignoredTypes.includes(msg.type)) {
+        logger.info(`Mensaje ignorado de tipo ${msg.type} de ${msg.from}`);
+        return;
+    }
+
     if (process.env.ONMESSAGE) {
         let match = msg.from.match(/^([^@]+)@/);
         let phoneNumber = match ? match[1] : null;
         let url = process.env.ONMESSAGE;
         let data = {
             phoneNumber: `${phoneNumber}`,
-            type: '',
+            type: msg.type,
+            from: msg.from,
+            id: msg.id ? msg.id._serialized : undefined,
+            timestamp: msg.timestamp,
+            body: msg.body || '',
+            hasMedia: msg.hasMedia || false
         };
 
         switch (msg.type) {
+            case 'chat':
+                // Solo texto
+                break;
             case 'image':
-                data.type = 'image';
-                data.imagen = msg.hasMedia ? true : false;
-                data.texto = msg.body || '';
+                data.imagen = true;
+                data.caption = msg.caption || '';
+                break;
+            case 'video':
+                data.video = true;
+                data.caption = msg.caption || '';
                 break;
             case 'audio':
-                data.type = 'audio';
+            case 'ptt':
+                data.audio = true;
+                break;
+            case 'document':
+                data.document = true;
+                data.filename = msg.filename || '';
+                data.caption = msg.caption || '';
+                break;
+            case 'location':
+                data.location = {
+                    latitude: msg.location?.latitude,
+                    longitude: msg.location?.longitude,
+                    description: msg.location?.description
+                };
+                break;
+            case 'contact':
+            case 'vcard':
+                data.contact = msg.vcard || '';
+                break;
+            case 'ciphertext':
+                data.ciphertext = true;
                 break;
             default:
-                data.type = 'chat';
-                data.texto = msg.body || '';
+                // Si llega aquí, es un tipo permitido pero no detallado
                 break;
         }
 
-        logger.info(`Posting message to ONMESSAGE: ${JSON.stringify(data)}`);
+        logger.info(`Posting message to ONMESSAGE (${url}): ${JSON.stringify(data)}`);
 
         let config = {
             headers: {
@@ -128,9 +177,9 @@ whatsapp.on( 'message', async (msg) => {
         };
         try {
             await axios.post(url, JSON.stringify(data), config);
-            logger.info(`Posted message info to ${url}`);
+            logger.info(`Posted message info to ${url} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
         } catch (err) {
-            logger.error(`Error posting message info: ${err.stack || err}`);
+            logger.error(`Error posting message info: ${err.stack || err} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
         }
     }
 });
