@@ -7,14 +7,19 @@ const logger = require('./logger');
 
 const whatsapp = new Client({
   puppeteer: {
+    executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
+    headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
   authStrategy: new LocalAuth({
     clientId: "cliente-2"
   }),
-  webVersionCache: { type: 'remote', remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html', }
-    
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+  }
 });
+
 
 const whatsappState = { isReady: false };
 
