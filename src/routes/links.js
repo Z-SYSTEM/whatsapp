@@ -37,8 +37,11 @@ router.post('/send', async (req, res) => {
         return res.status(400).json({ res: false, error: 'Missing phoneNumber and message, imageUrl or pdfUrl' });
     }
 
+    // Declarar chatId fuera del try para que esté disponible en el catch
+    let chatId;
+    
     try {
-        const chatId = phoneNumber.substring(1) + "@c.us";
+        chatId = phoneNumber.substring(1) + "@c.us";
         logger.info(`Looking up WhatsApp ID for ${chatId}`);
 
         // Control de destinatarios no válidos
@@ -73,7 +76,7 @@ router.post('/send', async (req, res) => {
         
         // Verificar si es error de sesión cerrada
         if (handleSessionError(error)) {
-            logger.warn(`Session lost during message send to ${chatId}, will auto-reconnect`);
+            logger.warn(`Session lost during message send to ${chatId || phoneNumber}, will auto-reconnect`);
             return res.status(503).json({ 
                 res: false, 
                 error: 'WhatsApp session temporarily unavailable, please retry in a few seconds',
