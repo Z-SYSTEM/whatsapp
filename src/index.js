@@ -1,29 +1,32 @@
-require('dotenv').config()
+require('dotenv').config();
 const express = require('express');
 const { whatsapp, whatsappState } = require('./lib/whatsapp');
 const logger = require('./lib/logger');
 const rateLimit = require('express-rate-limit');
-const app = express()
+const app = express();
+
+if (!process.env.PORT || !process.env.TOKENACCESS) {
+    logger.error('Faltan variables de entorno requeridas (PORT, TOKENACCESS)');
+    process.exit(1);
+}
 
 const puerto = parseInt(process.env.PORT);
-
-// Lee el intervalo de chequeo desde .env (en minutos), por defecto 2 si no está definido
 const CHECK_INTERVAL_MINUTES = parseInt(process.env.WHATSAPP_CHECK_INTERVAL_MINUTES) || 2;
 
-app.use(express.urlencoded({extended: false}));
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use('/api/send', rateLimit({
     windowMs: 60 * 1000, // 1 minuto
     max: 10 // máximo 10 requests por minuto
 }));
 
-//rutas
+// Rutas
 app.use('/api', require('./routes/links'));
 
-whatsapp.initialize()
+whatsapp.initialize();
 
-app.listen(puerto, ()=>{
-  console.log(`Server on port ${puerto}`)
+app.listen(puerto, () => {
+    console.log(`Server on port ${puerto}`);
 });
 
 process.on('uncaughtException', (err) => {
@@ -32,7 +35,6 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', reason);
 
-    // No salir, solo loguear
     if (reason && reason.message && reason.message.includes('Failed to launch the browser process')) {
         logger.error('Bloqueando salida por fallo de Puppeteer');
         return;
@@ -63,12 +65,7 @@ setInterval(async () => {
     } else {
         logger.info('WhatsApp client is ready (interval check).');
     }
-}, CHECK_INTERVAL_MINUTES * 60 * 1000); // configurable por .env
-
-if (!process.env.PORT || !process.env.TOKENACCESS) {
-    logger.error('Faltan variables de entorno requeridas (PORT, TOKENACCESS)');
-    process.exit(1);
-}
+}, CHECK_INTERVAL_MINUTES * 60 * 1000);
 
 logger.info('Iniciando servidor WhatsApp API...');
 logger.info(`Configuración: puerto=${puerto}, intervalo chequeo=${CHECK_INTERVAL_MINUTES} min`);
