@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const { whatsapp, whatsappState } = require('./lib/whatsapp');
+const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
 const logger = require('./lib/logger');
 const rateLimit = require('express-rate-limit');
 const app = express();
@@ -54,16 +54,21 @@ process.on('SIGINT', async () => {
 });
 
 setInterval(async () => {
-    if (!whatsappState.isReady) {
-        logger.warn('WhatsApp client not ready (interval), trying to re-initialize...');
-        try {
-            await whatsapp.initialize();
-            logger.info('Attempted to re-initialize WhatsApp client from interval.');
-        } catch (err) {
-            logger.error('Error re-initializing WhatsApp client from interval:', err);
+    try {
+        const clientReady = await isClientReady();
+        if (!clientReady) {
+            logger.warn('WhatsApp client not ready (interval check), attempting to re-initialize...');
+            try {
+                await whatsapp.initialize();
+                logger.info('Attempted to re-initialize WhatsApp client from interval.');
+            } catch (err) {
+                logger.error('Error re-initializing WhatsApp client from interval:', err);
+            }
+        } else {
+            logger.info('WhatsApp client is ready (interval check).');
         }
-    } else {
-        logger.info('WhatsApp client is ready (interval check).');
+    } catch (error) {
+        logger.error('Error during interval check:', error.message);
     }
 }, CHECK_INTERVAL_MINUTES * 60 * 1000);
 

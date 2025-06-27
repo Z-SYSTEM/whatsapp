@@ -1,21 +1,17 @@
 require('dotenv').config()
 const {Router} = require('express');
-const { whatsapp, MessageMedia, whatsappState } = require('../lib/whatsapp');
+const { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError } = require('../lib/whatsapp');
 const logger = require('../lib/logger');
 const router = Router();
 
 router.post('/send', async (req, res) => {
     logger.info('Received request to /send');
 
-    if (!whatsappState.isReady) {
-        logger.warn('WhatsApp client not ready, trying to re-initialize...');
-        try {
-            await whatsapp.initialize();
-            logger.info('Attempted to re-initialize WhatsApp client.');
-        } catch (err) {
-            logger.error('Error re-initializing WhatsApp client:', err);
-        }
-        return res.status(503).json({ res: false, error: 'WhatsApp client not connected' });
+    // Verificación más robusta del estado del cliente
+    const clientReady = await isClientReady();
+    if (!clientReady) {
+        logger.warn('WhatsApp client not ready or session closed');
+        return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
     }
 
     const authHeader = req.headers.authorization;
@@ -72,16 +68,29 @@ router.post('/send', async (req, res) => {
         }
     } catch (error) {
         logger.error(`Error sending message: ${error.stack || error}`);
+        
+        // Manejar errores específicos de sesión cerrada
+        if (handleSessionError(error)) {
+            return res.status(503).json({ res: false, error: 'WhatsApp session closed, please try again later' });
+        }
+        
         return res.status(500).json({ res: false, error: 'Internal server error' });
     }
 });
 
-router.get('/test', (req, res) => {
+router.get('/test', async (req, res) => {
     logger.info('Health check on /test');
-    if (whatsappState.isReady) {
-        res.status(200).json({ status: 'ok', whatsapp: 'ready' });
-    } else {
-        res.status(503).json({ status: 'error', whatsapp: 'not ready' });
+    
+    try {
+        const clientReady = await isClientReady();
+        if (clientReady) {
+            res.status(200).json({ status: 'ok', whatsapp: 'ready' });
+        } else {
+            res.status(503).json({ status: 'error', whatsapp: 'not ready' });
+        }
+    } catch (error) {
+        logger.error(`Error checking client status: ${error.message}`);
+        res.status(503).json({ status: 'error', whatsapp: 'check failed' });
     }
 });
 

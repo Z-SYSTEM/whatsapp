@@ -23,6 +23,40 @@ const whatsapp = new Client({
 
 const whatsappState = { isReady: false };
 
+// Función para verificar si el cliente está realmente listo
+async function isClientReady() {
+    if (!whatsappState.isReady) {
+        return false;
+    }
+    
+    try {
+        // Intentar una operación simple para verificar que la sesión está activa
+        const state = await whatsapp.getState();
+        return state === 'CONNECTED';
+    } catch (error) {
+        logger.warn(`Client state check failed: ${error.message}`);
+        whatsappState.isReady = false;
+        return false;
+    }
+}
+
+// Función para manejar errores de sesión cerrada
+function handleSessionError(error) {
+    const isSessionClosed = error.message && (
+        error.message.includes('Session closed') ||
+        error.message.includes('Protocol error') ||
+        error.message.includes('Target closed')
+    );
+    
+    if (isSessionClosed) {
+        logger.warn('Session closed detected, marking client as not ready');
+        whatsappState.isReady = false;
+        notifyDown('Session closed');
+    }
+    
+    return isSessionClosed;
+}
+
 whatsapp.on('qr', qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
@@ -66,16 +100,19 @@ whatsapp.on('auth_failure', (msg) => {
 
 whatsapp.on('call', async (call) => {
     logger.info(`Incoming call from ${call.from} (${call.isVideo ? 'video' : 'voice'})`);
-    // Rechaza la llamada
-    await call.reject();
-    logger.info(`Call from ${call.from} rejected.`);
-
-    // Envía mensaje al usuario que llamó
+    
     try {
+        // Rechaza la llamada
+        await call.reject();
+        logger.info(`Call from ${call.from} rejected.`);
+
+        // Envía mensaje al usuario que llamó
         await whatsapp.sendMessage(call.from, 'No se pueden recibir llamadas');
         logger.info(`Sent "No se pueden recibir llamadas" to ${call.from}`);
     } catch (err) {
-        logger.error(`Error sending call rejection message: ${err.stack || err}`);
+        logger.error(`Error handling call: ${err.stack || err}`);
+        handleSessionError(err);
+        return; // No continuar si hay error de sesión
     }
 
     // (Opcional) Notifica a ONMESSAGE si está configurado
@@ -185,11 +222,14 @@ whatsapp.on( 'message', async (msg) => {
             logger.info(`Posted message info to ${url} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
         } catch (err) {
             logger.error(`Error posting message info: ${err.stack || err} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
+            
+            // Si hay error de sesión cerrada durante el procesamiento de mensajes
+            handleSessionError(err);
         }
     }
 });
 
-module.exports = { whatsapp, MessageMedia, whatsappState };
+module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError };
 
 
 
