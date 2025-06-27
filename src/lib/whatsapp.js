@@ -229,6 +229,14 @@ whatsapp.on( 'message', async (msg) => {
     }
 });
 
+// En whatsapp.js, agrega limpieza de caché periódica
+setInterval(() => {
+    if (global.gc) {
+        global.gc();
+        logger.info('Garbage collection executed');
+    }
+}, 30 * 60 * 1000); // cada 30 minutos
+
 module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError };
 
 

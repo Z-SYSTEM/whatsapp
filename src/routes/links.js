@@ -7,13 +7,7 @@ const router = Router();
 router.post('/send', async (req, res) => {
     logger.info('Received request to /send');
 
-    // Verificación más robusta del estado del cliente
-    const clientReady = await isClientReady();
-    if (!clientReady) {
-        logger.warn('WhatsApp client not ready or session closed');
-        return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
-    }
-
+    // Verificación de token de acceso
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         logger.warn('No token provided');
@@ -28,8 +22,16 @@ router.post('/send', async (req, res) => {
         return res.status(403).json({ res: false, error: 'Invalid token' });
     }
 
+    // Verificación más robusta del estado del cliente
+    const clientReady = await isClientReady();
+    if (!clientReady) {
+        logger.warn('WhatsApp client not ready or session closed');
+        return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
+    }
+
     const { phoneNumber, message, imageUrl, pdfUrl } = req.body;
 
+    // Validación de parámetros
     if (!phoneNumber || (!message && !imageUrl && !pdfUrl)) {
         logger.warn('Missing phoneNumber and message, imageUrl or pdfUrl');
         return res.status(400).json({ res: false, error: 'Missing phoneNumber and message, imageUrl or pdfUrl' });
@@ -57,7 +59,7 @@ router.post('/send', async (req, res) => {
                 const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
                 await whatsapp.sendMessage(chatId, media, { caption: message || '' });
             } else {
-                logger.info(`Sending text message to ${chatId}`);
+                logger.info(`Sending text message to ${chatId}: ${message}`);
                 await whatsapp.sendMessage(chatId, message);
             }
             logger.info(`Message sent to ${chatId}`);
@@ -69,9 +71,14 @@ router.post('/send', async (req, res) => {
     } catch (error) {
         logger.error(`Error sending message: ${error.stack || error}`);
         
-        // Manejar errores específicos de sesión cerrada
+        // Verificar si es error de sesión cerrada
         if (handleSessionError(error)) {
-            return res.status(503).json({ res: false, error: 'WhatsApp session closed, please try again later' });
+            logger.warn(`Session lost during message send to ${chatId}, will auto-reconnect`);
+            return res.status(503).json({ 
+                res: false, 
+                error: 'WhatsApp session temporarily unavailable, please retry in a few seconds',
+                retry: true 
+            });
         }
         
         return res.status(500).json({ res: false, error: 'Internal server error' });
@@ -84,8 +91,10 @@ router.get('/test', async (req, res) => {
     try {
         const clientReady = await isClientReady();
         if (clientReady) {
+            logger.info('WhatsApp client ready - test passed');
             res.status(200).json({ status: 'ok', whatsapp: 'ready' });
         } else {
+            logger.warn('WhatsApp client not ready - test failed');
             res.status(503).json({ status: 'error', whatsapp: 'not ready' });
         }
     } catch (error) {
