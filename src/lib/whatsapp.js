@@ -4,6 +4,8 @@ const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
 const { config } = require('dotenv');
 const logger = require('./logger');
+const fs = require('fs');
+const { execSync } = require('child_process');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -51,10 +53,27 @@ function handleSessionError(error) {
     if (isSessionClosed) {
         logger.warn('Session closed detected, marking client as not ready');
         whatsappState.isReady = false;
-        notifyDown('Session closed');
+        return true;
     }
     
-    return isSessionClosed;
+    // Manejar error de SingletonLock
+    if (error.message && error.message.includes('SingletonLock')) {
+        logger.warn('Intentando resolver bloqueo por SingletonLock...');
+
+        try {
+            execSync('pkill -f puppeteer');
+            execSync('pkill -f chrome');
+            fs.unlinkSync('/root/app/soporte/.wwebjs_auth/session-cliente-2/SingletonLock');
+            logger.info('Bloqueo eliminado, intentando re-iniciar...');
+            // Marcar como no listo para que el intervalo lo reinicie
+            whatsappState.isReady = false;
+        } catch (e) {
+            logger.error('Error al intentar limpiar el lock:', e);
+        }
+        return true;
+    }
+    
+    return false;
 }
 
 whatsapp.on('qr', qr => {
