@@ -27,11 +27,38 @@ whatsapp.initialize();
 
 app.listen(puerto, () => {
     console.log(`Server on port ${puerto}`);
+    logger.info(`Server started on port ${puerto}`);
 });
+
+// Monitor de memoria cada 5 minutos
+setInterval(() => {
+    const memoryUsage = process.memoryUsage();
+    const formatMB = (bytes) => (bytes / 1024 / 1024).toFixed(2);
+    
+    logger.info(`Memory Report - RSS: ${formatMB(memoryUsage.rss)}MB, Heap: ${formatMB(memoryUsage.heapUsed)}/${formatMB(memoryUsage.heapTotal)}MB, External: ${formatMB(memoryUsage.external)}MB`);
+    
+    // Alerta si el uso excede 1GB
+    if (memoryUsage.rss > 1024 * 1024 * 1024) {
+        logger.error(`High memory usage detected: ${formatMB(memoryUsage.rss)}MB - Restarting process`);
+        process.exit(1); // PM2 lo reiniciará automáticamente
+    }
+}, 5 * 60 * 1000); // cada 5 minutos
+
+// Reinicio automático diario a las 3 AM
+const RESTART_HOUR = 3;
+setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === RESTART_HOUR && now.getMinutes() === 0) {
+        logger.info('Scheduled daily restart at 3 AM');
+        setTimeout(() => process.exit(0), 5000); // Delay para completar logs
+    }
+}, 60 * 1000); // verificar cada minuto
 
 process.on('uncaughtException', (err) => {
     logger.error('Uncaught Exception:', err);
+    // No cerrar el proceso por errores no críticos
 });
+
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('Unhandled Rejection:', reason);
 
@@ -40,6 +67,7 @@ process.on('unhandledRejection', (reason, promise) => {
         return;
     }
 });
+
 process.on('SIGINT', async () => {
     const motivo = 'SIGINT (Ctrl+C o señal de apagado)';
     const fecha = new Date().toISOString();
@@ -49,7 +77,23 @@ process.on('SIGINT', async () => {
     logger.warn(`Apagando servidor por ${motivo}`);
     logger.info(`Motivo: ${motivo} | Fecha: ${fecha} | Uptime: ${uptime}s | Usuario: ${usuario} | PID: ${process.pid}, PPID: ${process.ppid}`);
     console.trace('[DEBUG] SIGINT recibido');
-    await whatsapp.destroy();
+    
+    try {
+        await whatsapp.destroy();
+    } catch (e) {
+        logger.error('Error destroying WhatsApp client:', e);
+    }
+    
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    logger.warn('Recibido SIGTERM, apagando gracefully...');
+    try {
+        await whatsapp.destroy();
+    } catch (e) {
+        logger.error('Error destroying WhatsApp client on SIGTERM:', e);
+    }
     process.exit(0);
 });
 

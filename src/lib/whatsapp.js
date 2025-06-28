@@ -22,8 +22,15 @@ const whatsapp = new Client({
   }
 });
 
-
 const whatsappState = { isReady: false };
+
+// Variable para trackear última operación exitosa
+let lastSuccessfulOperation = Date.now();
+
+// Función para actualizar timestamp de última operación
+function updateLastOperation() {
+    lastSuccessfulOperation = Date.now();
+}
 
 // Función para verificar si el cliente está realmente listo
 async function isClientReady() {
@@ -34,12 +41,23 @@ async function isClientReady() {
     try {
         // Intentar una operación simple para verificar que la sesión está activa
         const state = await whatsapp.getState();
+        updateLastOperation();
         return state === 'CONNECTED';
     } catch (error) {
         logger.warn(`Client state check failed: ${error.message}`);
         whatsappState.isReady = false;
         return false;
     }
+}
+
+// Función para envío de mensajes con timeout
+async function sendMessageWithTimeout(chatId, message, options = {}, timeoutMs = 30000) {
+    return Promise.race([
+        whatsapp.sendMessage(chatId, message, options),
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Send message timeout')), timeoutMs)
+        )
+    ]);
 }
 
 // Función para manejar errores de sesión cerrada
@@ -76,6 +94,24 @@ function handleSessionError(error) {
     return false;
 }
 
+// Health check más robusto
+async function performHealthCheck() {
+    try {
+        if (!whatsappState.isReady) return false;
+        
+        // Test múltiples operaciones
+        const state = await whatsapp.getState();
+        await whatsapp.getContacts(); // Operación que requiere sesión activa
+        
+        updateLastOperation(); // Actualizar timestamp de última operación exitosa
+        return state === 'CONNECTED';
+    } catch (error) {
+        logger.error(`Health check failed: ${error.message}`);
+        handleSessionError(error);
+        return false;
+    }
+}
+
 whatsapp.on('qr', qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
@@ -85,6 +121,7 @@ whatsapp.on('qr', qr => {
 whatsapp.on('ready', () => {
     logger.info('WhatsApp client is ready!');
     whatsappState.isReady = true;
+    updateLastOperation();
 });
 
 async function notifyDown(reason) {
@@ -128,6 +165,7 @@ whatsapp.on('call', async (call) => {
         // Envía mensaje al usuario que llamó
         await whatsapp.sendMessage(call.from, 'No se pueden recibir llamadas');
         logger.info(`Sent "No se pueden recibir llamadas" to ${call.from}`);
+        updateLastOperation();
     } catch (err) {
         logger.error(`Error handling call: ${err.stack || err}`);
         handleSessionError(err);
@@ -239,6 +277,7 @@ whatsapp.on( 'message', async (msg) => {
         try {
             await axios.post(url, JSON.stringify(data), config);
             logger.info(`Posted message info to ${url} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
+            updateLastOperation();
         } catch (err) {
             logger.error(`Error posting message info: ${err.stack || err} | id: ${data.id} | type: ${data.type} | phoneNumber: ${data.phoneNumber}`);
             
@@ -248,15 +287,54 @@ whatsapp.on( 'message', async (msg) => {
     }
 });
 
-// En whatsapp.js, agrega limpieza de caché periódica
+// Health check cada 30 segundos
+setInterval(async () => {
+    const isHealthy = await performHealthCheck();
+    if (!isHealthy && whatsappState.isReady) {
+        logger.warn('Health check failed, marking client as not ready');
+        whatsappState.isReady = false;
+    }
+}, 30 * 1000);
+
+// Monitor de cliente zombie cada 5 minutos
+setInterval(async () => {
+    const timeSinceLastOperation = Date.now() - lastSuccessfulOperation;
+    const maxIdleTime = 15 * 60 * 1000; // 15 minutos
+    
+    if (timeSinceLastOperation > maxIdleTime && whatsappState.isReady) {
+        logger.warn(`Client may be zombie (${timeSinceLastOperation/1000}s idle), forcing restart`);
+        try {
+            await whatsapp.destroy();
+        } catch (e) {
+            logger.error('Error destroying zombie client:', e);
+        }
+        whatsappState.isReady = false;
+        setTimeout(() => whatsapp.initialize(), 5000);
+    }
+}, 5 * 60 * 1000);
+
+// Garbage collection cada 30 minutos
 setInterval(() => {
     if (global.gc) {
         global.gc();
         logger.info('Garbage collection executed');
     }
-}, 30 * 60 * 1000); // cada 30 minutos
+}, 30 * 60 * 1000);
 
-module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError };
+// Cleanup al cerrar proceso
+process.on('beforeExit', async () => {
+    logger.info('Process before exit, cleaning up...');
+    try {
+        await whatsapp.destroy();
+        // Forzar limpieza de procesos Chrome/Puppeteer
+        execSync('pkill -f chrome || true', { stdio: 'ignore' });
+        execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
+    } catch (e) {
+        logger.error('Error in cleanup:', e);
+    }
+});
+
+module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation };
 
 
 
