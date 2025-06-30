@@ -107,6 +107,37 @@ setInterval(async () => {
                 logger.info('Attempted to re-initialize WhatsApp client from interval.');
             } catch (err) {
                 logger.error('Error re-initializing WhatsApp client from interval:', err);
+                
+                // Manejar SingletonLock específicamente aquí
+                if (err.message && err.message.includes('SingletonLock')) {
+                    logger.warn('SingletonLock detected during re-initialization, cleaning up...');
+                    const { execSync } = require('child_process');
+                    const fs = require('fs');
+                    
+                    try {
+                        execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
+                        execSync('pkill -f chrome || true', { stdio: 'ignore' });
+                        
+                        const lockPath = '/root/app/yapai/.wwebjs_auth/session-cliente-2/SingletonLock';
+                        if (fs.existsSync(lockPath)) {
+                            fs.unlinkSync(lockPath);
+                            logger.info('SingletonLock file removed');
+                        }
+                        
+                        // Intentar reinicializar después de limpiar
+                        setTimeout(async () => {
+                            try {
+                                await whatsapp.initialize();
+                                logger.info('WhatsApp re-initialized after SingletonLock cleanup');
+                            } catch (retryErr) {
+                                logger.error('Failed to re-initialize after cleanup:', retryErr);
+                            }
+                        }, 3000);
+                        
+                    } catch (cleanupErr) {
+                        logger.error('Error during SingletonLock cleanup:', cleanupErr);
+                    }
+                }
             }
         } else {
             logger.info('WhatsApp client is ready (interval check).');
