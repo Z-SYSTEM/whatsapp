@@ -9,7 +9,10 @@ const { execSync } = require('child_process');
 
 const whatsapp = new Client({
   puppeteer: {
-    executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
+    // Solo usar executablePath específico en Linux/producción
+    ...(process.platform === 'linux' && {
+      executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
+    }),
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
