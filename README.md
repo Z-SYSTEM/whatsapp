@@ -14,8 +14,8 @@ API REST para envío de mensajes de WhatsApp utilizando whatsapp-web.js.
 
 ```bash
 # Clonar repositorio
-git clone <repository-url>
-cd whatsapp-api
+git clone https://github.com/Z-SYSTEM/whatsapp.git
+cd whatsapp
 
 # Instalar dependencias
 npm install
@@ -51,6 +51,18 @@ PORT=4002
 TOKENACCESS=your_access_token_here
 WHATSAPP_CHECK_INTERVAL_MINUTES=2
 ```
+
+### Explicación de variables:
+
+- **`ONMESSAGE`** - URL donde se enviarán los mensajes recibidos (webhook). Cuando alguien te escriba por WhatsApp, esta APP automáticamente hará un POST a la URL con el contenido del mensaje.
+
+- **`ONDOWN`** - URL donde se notificará cuando WhatsApp se desconecte (webhook). Si la sesión de WhatsApp se pierde, esta APP enviará una alerta a la URL especificada.
+
+- **`PORT`** - Puerto donde escuchará esta APP tus posteos. Tu API estará disponible en `http://localhost:PORT`
+
+- **`TOKENACCESS`** - Token de seguridad para autenticar las peticiones que recibe esta APP. Puedes generarlo a tu gusto. Este token deberá enviarse en el header `Authorization: Bearer TOKENACCESS` cuando uses el endpoint `/api/send`.
+
+- **`WHATSAPP_CHECK_INTERVAL_MINUTES`** - Cada cuántos minutos verificar si WhatsApp está conectado y funcionando correctamente. Si está desconectado, intentará reconectarse automáticamente.
 
 ## Endpoints
 
