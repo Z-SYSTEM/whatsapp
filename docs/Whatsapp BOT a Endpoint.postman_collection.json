@@ -1,0 +1,70 @@
+{
+	"info": {
+		"_postman_id": "d6cf3abd-a325-4830-81a1-c4d979e917d9",
+		"name": "Whatsapp BOT a Endpoint",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "15510658",
+		"_collection_link": "https://crimson-station-966053.postman.co/workspace/Soporte~e4f15886-78cd-4697-b78d-c7f54623f450/collection/15510658-d6cf3abd-a325-4830-81a1-c4d979e917d9?action=share&source=collection_link&creator=15510658"
+	},
+	"item": [
+		{
+			"name": "OnMessage",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"phoneNumber\": \"{{PHONE}}\",\r\n    \"type\": \"chat\",\r\n    \"texto\": \"<mensaje_recibido>\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{ENDPOINT}}/api/wclient/onmessage",
+					"host": [
+						"{{ENDPOINT}}"
+					],
+					"path": [
+						"api",
+						"wclient",
+						"onmessage"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "OnDown",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\t\"message\" : \"Bot is down\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{ENDPOINT}}/api/wclient/ondown",
+					"host": [
+						"{{ENDPOINT}}"
+					],
+					"path": [
+						"api",
+						"wclient",
+						"ondown"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
