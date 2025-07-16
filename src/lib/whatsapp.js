@@ -345,7 +345,10 @@ async function tryRestartWhatsApp() {
         return;
     }
     restartAttempts++;
-    logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${restartAttempts}`);
+    logger.warn(`[RECOVERY] Chequeo fallido #${restartAttempts} - WhatsApp no está listo`);
+    if (restartAttempts < 3) {
+        logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${restartAttempts}`);
+    }
     try {
         await whatsapp.initialize();
         logger.info(`[RECOVERY] Intento de reinicio ejecutado (#${restartAttempts})`);
@@ -353,6 +356,7 @@ async function tryRestartWhatsApp() {
         logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
     }
     if (restartAttempts >= 3 && !whatsappState.isReady) {
+        logger.warn(`[RECOVERY] Se alcanzaron ${restartAttempts} chequeos fallidos. Enviando notificación FCM de caída.`);
         if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
             try {
                 await sendPushNotificationFCM(
