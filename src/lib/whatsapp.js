@@ -385,10 +385,12 @@ setInterval(async () => {
     if (!isHealthy && whatsappState.isReady) {
         logger.warn('Health check failed, marking client as not ready');
         whatsappState.isReady = false;
-        // Iniciar reintentos cada 10 segundos
+        // Iniciar recovery inmediato (no esperar al próximo intervalo)
         if (!retryInterval) {
             restartAttempts = 0;
             retryInterval = setInterval(tryRestartWhatsApp, 10 * 1000);
+            // Llamar una vez ya mismo para que el recovery y logs se vean en el acto
+            tryRestartWhatsApp();
         }
     }
     if (isHealthy && whatsappState.isReady) {
