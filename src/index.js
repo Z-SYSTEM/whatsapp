@@ -304,19 +304,6 @@ setInterval(async () => {
                 }
             }
         } else {
-            if (!wasClientReady) {
-                // Notificar recuperación solo si está habilitado y el token está configurado
-                const deviceToken = process.env.FCM_DEVICE_TOKEN;
-                if (canSendPush && deviceToken) {
-                    await sendPushNotificationFCM(
-                        deviceToken,
-                        'WhatsApp en línea',
-                        'El cliente WhatsApp volvió a estar disponible.'
-                    );
-                } else if (canSendPush && !deviceToken) {
-                    logger.warn('FCM_DEVICE_TOKEN no está configurado en el entorno, no se envía notificación push.');
-                }
-            }
             wasClientReady = true;
             logger.info('WhatsApp client is ready (interval check).');
         }
