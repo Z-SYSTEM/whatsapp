@@ -41,7 +41,27 @@ pm2 restart whatsapp-api
 pm2 delete whatsapp-api
 ```
 
-## Configuración (.env)
+
+## Notificaciones Push (Firebase Cloud Messaging)
+
+Para habilitar notificaciones push a una app móvil vía FCM:
+
+- El archivo de credenciales de Firebase **NO debe estar en el repositorio**. Debe ubicarse fuera del proyecto, por ejemplo:
+  - Linux: `/root/app/firebase-credentials.json`
+  - Windows: en una ruta accesible y fuera del repo
+- Configura la variable de entorno `FCM_CREDENTIALS_PATH` con la ruta absoluta al archivo de credenciales.
+- El token del dispositivo receptor debe ir en la variable de entorno `FCM_DEVICE_TOKEN`.
+- El nombre de la instancia del bot debe ir en la variable de entorno `BOT_NAME`.
+- Las notificaciones push solo se envían si existen credenciales y token configurado.
+
+Ejemplo de configuración en `.env`:
+```properties
+FCM_CREDENTIALS_PATH=/root/app/firebase-credentials.json
+FCM_DEVICE_TOKEN=token_generado_por_la_app_movil
+BOT_NAME=BOTENVIOS
+```
+
+
 
 ```properties
 # WhatsApp API Configuration
@@ -50,6 +70,9 @@ ONDOWN=http://localhost:3000/api/wclient/ondown
 PORT=4002
 TOKENACCESS=your_access_token_here
 WHATSAPP_CHECK_INTERVAL_MINUTES=2
+FCM_CREDENTIALS_PATH=/root/app/firebase-credentials.json
+FCM_DEVICE_TOKEN=token_generado_por_la_app_movil
+BOT_NAME=BOTENVIOS
 ```
 
 ### Explicación de variables:
