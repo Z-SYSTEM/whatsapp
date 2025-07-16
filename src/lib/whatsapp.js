@@ -1,3 +1,20 @@
+// Función para loguear contexto del sistema
+function logSystemContext(motivo) {
+    const mem = process.memoryUsage();
+    const cpu = process.cpuUsage();
+    const uptime = process.uptime();
+    logger.warn(`[MONITOR] Reinicio/Destrucción WhatsApp - Motivo: ${motivo}`);
+    logger.warn(`[MONITOR] RAM: RSS ${(mem.rss/1024/1024).toFixed(2)}MB, Heap ${(mem.heapUsed/1024/1024).toFixed(2)}/${(mem.heapTotal/1024/1024).toFixed(2)}MB, External ${(mem.external/1024/1024).toFixed(2)}MB`);
+    logger.warn(`[MONITOR] CPU: user ${(cpu.user/1000).toFixed(2)}ms, system ${(cpu.system/1000).toFixed(2)}ms, Uptime: ${uptime.toFixed(2)}s`);
+}
+// Limpia listeners de proceso para evitar memory leaks
+function cleanupProcessListeners() {
+    process.removeAllListeners('SIGINT');
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGHUP');
+    process.removeAllListeners('exit');
+    process.removeAllListeners('beforeExit');
+}
 var axios = require('axios');
 require('dotenv').config()
 const qrcode = require('qrcode-terminal');
@@ -306,12 +323,14 @@ setInterval(async () => {
     
     if (timeSinceLastOperation > maxIdleTime && whatsappState.isReady) {
         logger.warn(`Client may be zombie (${timeSinceLastOperation/1000}s idle), forcing restart`);
+        logSystemContext('zombie restart');
         try {
             await whatsapp.destroy();
         } catch (e) {
             logger.error('Error destroying zombie client:', e);
         }
         whatsappState.isReady = false;
+        cleanupProcessListeners();
         setTimeout(() => whatsapp.initialize(), 5000);
     }
 }, 5 * 60 * 1000);
@@ -325,16 +344,42 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 // Cleanup al cerrar proceso
+cleanupProcessListeners();
 process.on('beforeExit', async () => {
+    logSystemContext('beforeExit');
     logger.info('Process before exit, cleaning up...');
     try {
         await whatsapp.destroy();
-        // Forzar limpieza de procesos Chrome/Puppeteer
         execSync('pkill -f chrome || true', { stdio: 'ignore' });
         execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
     } catch (e) {
         logger.error('Error in cleanup:', e);
     }
+});
+
+process.on('SIGINT', () => {
+    logSystemContext('SIGINT');
+    logger.warn('Process received SIGINT');
+});
+process.on('SIGTERM', () => {
+    logSystemContext('SIGTERM');
+    logger.warn('Process received SIGTERM');
+});
+process.on('SIGHUP', () => {
+    logSystemContext('SIGHUP');
+    logger.warn('Process received SIGHUP');
+});
+process.on('exit', (code) => {
+    logSystemContext(`exit code ${code}`);
+    logger.warn(`Process exit with code ${code}`);
+});
+process.on('uncaughtException', (err) => {
+    logSystemContext('uncaughtException');
+    logger.error(`Uncaught Exception: ${err.stack || err}`);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    logSystemContext('unhandledRejection');
+    logger.error(`Unhandled Rejection: ${reason}`);
 });
 
 module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation };
