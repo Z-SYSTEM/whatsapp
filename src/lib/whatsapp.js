@@ -391,6 +391,12 @@ async function recoverySequence() {
     recoveryInProgress = true;
     let recovered = false;
     for (let i = 1; i <= 3; i++) {
+        // Verificar si el cliente ya está listo antes de intentar recovery
+        if (await isClientReady()) {
+            logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
+            recovered = true;
+            break;
+        }
         logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
         try {
             await whatsapp.initialize();
