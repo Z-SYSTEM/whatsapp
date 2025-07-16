@@ -336,12 +336,15 @@ let restartAttempts = 0;
 let retryInterval = null;
 
 async function tryRestartWhatsApp() {
+    logger.warn('[RECOVERY] Entrando a tryRestartWhatsApp');
     if (whatsappState.isReady) {
+        logger.warn('[RECOVERY] Cliente ya está listo, reseteando contadores de recovery');
         restartAttempts = 0;
         if (retryInterval) {
             clearInterval(retryInterval);
             retryInterval = null;
         }
+        logger.warn('[RECOVERY] Saliendo de tryRestartWhatsApp (cliente listo)');
         return;
     }
     restartAttempts++;
@@ -373,6 +376,7 @@ async function tryRestartWhatsApp() {
         clearInterval(retryInterval);
         retryInterval = null;
     }
+    logger.warn('[RECOVERY] Saliendo de tryRestartWhatsApp');
 }
 
 // Health check cada 30 segundos
