@@ -33,6 +33,17 @@ function startHealthCheck() {
                 }
                 wasClientReady = false;
                 try {
+                    // Limpieza de SingletonLock antes de reiniciar
+                    const fs = require('fs');
+                    const lockPath = '/root/app/yapai/.wwebjs_auth/session-cliente-2/SingletonLock';
+                    if (fs.existsSync(lockPath)) {
+                        try {
+                            fs.unlinkSync(lockPath);
+                            logger.warn('[HEALTH] Archivo SingletonLock eliminado antes de reiniciar WhatsApp.');
+                        } catch (e) {
+                            logger.error('[HEALTH] Error eliminando SingletonLock:', e);
+                        }
+                    }
                     await whatsapp.initialize();
                     logger.info('Attempted to re-initialize WhatsApp client from interval.');
                 } catch (err) {

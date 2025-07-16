@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../lib/logger');
 
+
 let admin = null;
 let canSendPush = false;
 let sendPushNotificationFCM = async () => {};
@@ -9,6 +10,7 @@ let sendPushNotificationFCM = async () => {};
 const credPath = process.env.FCM_CREDENTIALS_PATH
     ? process.env.FCM_CREDENTIALS_PATH
     : path.resolve(__dirname, '../../../firebase-credentials.json');
+
 if (fs.existsSync(credPath)) {
     admin = require('firebase-admin');
     const serviceAccount = require(credPath);
@@ -42,7 +44,8 @@ if (fs.existsSync(credPath)) {
     logger.warn('No se encontró el archivo de credenciales FCM, las notificaciones push están deshabilitadas.');
 }
 
+// Exporta siempre funciones y flags ya inicializadas
 module.exports = {
-    sendPushNotificationFCM,
-    canSendPush
+    sendPushNotificationFCM: (...args) => sendPushNotificationFCM(...args),
+    get canSendPush() { return canSendPush; }
 };
