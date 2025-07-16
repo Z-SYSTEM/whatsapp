@@ -1,5 +1,6 @@
 // Flag para controlar notificaciones de estado
 let wasClientReady = true;
+let restartCount = 0; // Contador de reinicios
 
 const fs = require('fs');
 const path = require('path');
@@ -105,6 +106,28 @@ setInterval(() => {
 
 process.on('uncaughtException', async (err) => {
     logger.error('Uncaught Exception:', err);
+    logger.error(`[RECOVERY] Stack trace uncaughtException: ${err && err.stack}`);
+    let errorType = 'unknown';
+    if (err && err.message) {
+        if (err.message.includes('Out of memory')) errorType = 'memory';
+        else if (err.message.includes('Failed to launch the browser process')) errorType = 'chrome_launch';
+        else if (err.message.includes('ECONNREFUSED')) errorType = 'connection_refused';
+        else if (err.message.includes('EADDRINUSE')) errorType = 'address_in_use';
+        else if (err.message.includes('Session closed')) errorType = 'session_closed';
+    }
+    logger.warn(`[RECOVERY] Tipo de error detectado: ${errorType}`);
+    const botName = process.env.BOT_NAME || 'desconocido';
+    restartCount++;
+    logger.warn(`[RECOVERY] Intentando reinicio #${restartCount} para instancia: ${botName} por uncaughtException. Motivo: ${err && err.message}`);
+    // Notificación push de cuelgue
+    const deviceToken = process.env.FCM_DEVICE_TOKEN;
+    if (canSendPush && deviceToken) {
+        await sendPushNotificationFCM(
+            deviceToken,
+            'Bot caído',
+            `La instancia ${botName} se colgó por uncaughtException: ${err && err.message} | Tipo: ${errorType}`
+        );
+    }
     // Intentar recuperación ante cualquier error
     try {
         await whatsapp.destroy();
@@ -114,6 +137,14 @@ process.on('uncaughtException', async (err) => {
     try {
         await whatsapp.initialize();
         logger.info('[RECOVERY] Cliente WhatsApp reiniciado tras uncaughtException.');
+        // Notificación push de recuperación
+        if (canSendPush && deviceToken) {
+            await sendPushNotificationFCM(
+                deviceToken,
+                'Bot recuperado',
+                `La instancia ${botName} fue reiniciada tras uncaughtException. | Tipo: ${errorType}`
+            );
+        }
     } catch (e) {
         logger.error('[RECOVERY] Error al reiniciar cliente tras uncaughtException:', e);
     }
@@ -133,6 +164,28 @@ process.on('uncaughtException', async (err) => {
 
 process.on('unhandledRejection', async (reason, promise) => {
     logger.error('Unhandled Rejection:', reason);
+    logger.error(`[RECOVERY] Stack trace unhandledRejection: ${reason && reason.stack}`);
+    let errorType = 'unknown';
+    if (reason && reason.message) {
+        if (reason.message.includes('Out of memory')) errorType = 'memory';
+        else if (reason.message.includes('Failed to launch the browser process')) errorType = 'chrome_launch';
+        else if (reason.message.includes('ECONNREFUSED')) errorType = 'connection_refused';
+        else if (reason.message.includes('EADDRINUSE')) errorType = 'address_in_use';
+        else if (reason.message.includes('Session closed')) errorType = 'session_closed';
+    }
+    logger.warn(`[RECOVERY] Tipo de error detectado: ${errorType}`);
+    const botName = process.env.BOT_NAME || 'desconocido';
+    restartCount++;
+    logger.warn(`[RECOVERY] Intentando reinicio #${restartCount} para instancia: ${botName} por unhandledRejection. Motivo: ${reason && reason.message}`);
+    // Notificación push de cuelgue
+    const deviceToken = process.env.FCM_DEVICE_TOKEN;
+    if (canSendPush && deviceToken) {
+        await sendPushNotificationFCM(
+            deviceToken,
+            'Bot caído',
+            `La instancia ${botName} se colgó por unhandledRejection: ${reason && reason.message} | Tipo: ${errorType}`
+        );
+    }
     // Intentar recuperación ante cualquier error
     try {
         await whatsapp.destroy();
@@ -142,6 +195,14 @@ process.on('unhandledRejection', async (reason, promise) => {
     try {
         await whatsapp.initialize();
         logger.info('[RECOVERY] Cliente WhatsApp reiniciado tras unhandledRejection.');
+        // Notificación push de recuperación
+        if (canSendPush && deviceToken) {
+            await sendPushNotificationFCM(
+                deviceToken,
+                'Bot recuperado',
+                `La instancia ${botName} fue reiniciada tras unhandledRejection. | Tipo: ${errorType}`
+            );
+        }
     } catch (e) {
         logger.error('[RECOVERY] Error al reiniciar cliente tras unhandledRejection:', e);
     }

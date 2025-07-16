@@ -5,7 +5,8 @@ const logger = require('../lib/logger');
 const router = Router();
 
 router.post('/send', async (req, res) => {
-    logger.info('Received request to /send');
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    logger.info(`Received request to /send from IP: ${clientIp}`);
 
     // Verificación de token de acceso
     const authHeader = req.headers.authorization;
@@ -142,7 +143,8 @@ router.post('/send', async (req, res) => {
 });
 
 router.get('/test', async (req, res) => {
-    logger.info('Health check on /test');
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || (req.connection.socket ? req.connection.socket.remoteAddress : null);
+    logger.info(`Health check on /test from IP: ${clientIp}`);
     
     try {
         const clientReady = await isClientReady();
