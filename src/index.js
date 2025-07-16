@@ -33,11 +33,12 @@ if (fs.existsSync(credPath)) {
                 botName: botName
             }
         };
+        logger.info('[FCM] Payload a enviar:', JSON.stringify(message));
         try {
             const response = await admin.messaging().send(message);
-            logger.info('Notificación FCM enviada:', response);
+            logger.info('[FCM] Respuesta FCM:', JSON.stringify(response));
         } catch (err) {
-            logger.error('Error enviando notificación FCM:', err.message);
+            logger.error('[FCM] Error enviando notificación FCM:', err.stack || err);
         }
     };
 } else {
