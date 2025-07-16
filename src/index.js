@@ -30,7 +30,9 @@ if (fs.existsSync(credPath)) {
                 body: `${body} [Instancia: ${botName}]`
             },
             data: {
-                botName: botName
+                botName: botName,
+                title: title,
+                body: body
             }
         };
         logger.info('[FCM] Payload a enviar: ' + JSON.stringify(message));

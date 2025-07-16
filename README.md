@@ -15,12 +15,17 @@ Backend Node.js para automatización y monitoreo de WhatsApp usando `whatsapp-we
 - `FCM_DEVICE_TOKEN`: Token del dispositivo para notificaciones push.
 - `ONDOWN`: (opcional) Endpoint para notificar caídas.
 - `ONMESSAGE`: (opcional) Endpoint para notificar mensajes/calls.
+- `HEALTH_CHECK_INTERVAL_SECONDS`: Intervalo en segundos para el health check (por defecto 30).
 
 ## Flujo de recuperación y notificación
-1. Si el cliente WhatsApp deja de estar listo, se marca como no disponible.
-2. Se inicia un intervalo de reintentos cada 10 segundos.
-3. Si tras 3 intentos el cliente sigue caído, se envía notificación FCM y se detienen los reintentos automáticos.
-4. Si el cliente se recupera, se limpian los contadores y no se notifica.
+## Flujo de health check y recuperación
+1. **Health check**: Cada X segundos (configurable por `.env` con `HEALTH_CHECK_INTERVAL_SECONDS`, por defecto 30), se verifica si el bot está listo (puede enviar y recibir mensajes).
+2. Si el bot está listo, no hace nada.
+3. Si el bot NO está listo, ejecuta el recovery:
+   - Intenta reiniciar hasta 3 veces, esperando 10 segundos entre cada intento.
+   - Si se recupera en cualquier intento, se resetea el contador y no se notifica.
+   - Si tras 3 intentos sigue caído, se envía notificación FCM de caída.
+   - El recovery es atómico: no se ejecutan varios a la vez.
 
 ## Ejecución
 ```bash

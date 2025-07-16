@@ -379,29 +379,60 @@ async function tryRestartWhatsApp() {
     logger.warn('[RECOVERY] Saliendo de tryRestartWhatsApp');
 }
 
-// Health check cada 30 segundos
+// Health check configurable por .env (por defecto 30s)
+const HEALTH_CHECK_INTERVAL = (parseInt(process.env.HEALTH_CHECK_INTERVAL_SECONDS, 10) || 30) * 1000;
+let recoveryInProgress = false;
+
+async function recoverySequence() {
+    if (recoveryInProgress) {
+        logger.warn('[RECOVERY] Ya hay un recovery en progreso, omitiendo nuevo intento');
+        return;
+    }
+    recoveryInProgress = true;
+    let recovered = false;
+    for (let i = 1; i <= 3; i++) {
+        logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
+        try {
+            await whatsapp.initialize();
+            // Esperar 2 segundos para ver si se pone ready
+            await new Promise(res => setTimeout(res, 2000));
+            if (await isClientReady()) {
+                logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
+                recovered = true;
+                break;
+            }
+        } catch (err) {
+            logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+        }
+        if (i < 3) {
+            await new Promise(res => setTimeout(res, 10000)); // Espera 10s entre intentos
+        }
+    }
+    if (!recovered) {
+        logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
+        if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+            try {
+                await sendPushNotificationFCM(
+                    process.env.FCM_DEVICE_TOKEN,
+                    'WhatsApp caído',
+                    'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
+                );
+                logger.info('[FCM] Notificación de caída enviada tras 3 intentos fallidos');
+            } catch (err) {
+                logger.error('[FCM] Error enviando notificación de caída:', err.stack || err);
+            }
+        }
+    }
+    recoveryInProgress = false;
+}
+
 setInterval(async () => {
     const isHealthy = await performHealthCheck();
-    if (!isHealthy && whatsappState.isReady) {
-        logger.warn('Health check failed, marking client as not ready');
-        whatsappState.isReady = false;
-        // Iniciar recovery inmediato (no esperar al próximo intervalo)
-        if (!retryInterval) {
-            restartAttempts = 0;
-            retryInterval = setInterval(tryRestartWhatsApp, 10 * 1000);
-            // Llamar una vez ya mismo para que el recovery y logs se vean en el acto
-            tryRestartWhatsApp();
-        }
+    if (!isHealthy) {
+        logger.warn('[HEALTH] Cliente WhatsApp no está listo, lanzando recovery');
+        await recoverySequence();
     }
-    if (isHealthy && whatsappState.isReady) {
-        // Si se recupera, limpiar reintentos
-        restartAttempts = 0;
-        if (retryInterval) {
-            clearInterval(retryInterval);
-            retryInterval = null;
-        }
-    }
-}, 30 * 1000);
+}, HEALTH_CHECK_INTERVAL);
 
 // Monitor de cliente zombie cada 5 minutos
 setInterval(async () => {
