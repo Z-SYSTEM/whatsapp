@@ -79,15 +79,14 @@ app.listen(puerto, () => {
 });
 
 // Monitor de memoria cada 5 minutos
+
 setInterval(() => {
     const memoryUsage = process.memoryUsage();
     const formatMB = (bytes) => (bytes / 1024 / 1024).toFixed(2);
-    
     logger.info(`Memory Report - RSS: ${formatMB(memoryUsage.rss)}MB, Heap: ${formatMB(memoryUsage.heapUsed)}/${formatMB(memoryUsage.heapTotal)}MB, External: ${formatMB(memoryUsage.external)}MB`);
-    
-    // Alerta si el uso excede 1GB
-    if (memoryUsage.rss > 1024 * 1024 * 1024) {
-        logger.error(`High memory usage detected: ${formatMB(memoryUsage.rss)}MB - Restarting process`);
+    // Alerta si el uso excede 1GB o si hay fuga de memoria
+    if (memoryUsage.rss > 1024 * 1024 * 1024 || memoryUsage.heapUsed > memoryUsage.heapTotal * 0.95) {
+        logger.error(`High memory usage or heap leak detected: RSS ${formatMB(memoryUsage.rss)}MB, Heap ${formatMB(memoryUsage.heapUsed)}/${formatMB(memoryUsage.heapTotal)}MB - Restarting process`);
         process.exit(1); // PM2 lo reiniciará automáticamente
     }
 }, 5 * 60 * 1000); // cada 5 minutos
@@ -102,17 +101,59 @@ setInterval(() => {
     }
 }, 60 * 1000); // verificar cada minuto
 
-process.on('uncaughtException', (err) => {
+
+
+process.on('uncaughtException', async (err) => {
     logger.error('Uncaught Exception:', err);
-    // No cerrar el proceso por errores no críticos
+    // Intentar recuperación ante cualquier error
+    try {
+        await whatsapp.destroy();
+    } catch (e) {
+        logger.error('[RECOVERY] Error al destruir cliente tras uncaughtException:', e);
+    }
+    try {
+        await whatsapp.initialize();
+        logger.info('[RECOVERY] Cliente WhatsApp reiniciado tras uncaughtException.');
+    } catch (e) {
+        logger.error('[RECOVERY] Error al reiniciar cliente tras uncaughtException:', e);
+    }
+    // Si el error es crítico, reiniciar el proceso para que PM2 lo levante
+    if (err && err.message && (
+        err.message.includes('Out of memory') ||
+        err.message.includes('Failed to launch the browser process') ||
+        err.message.includes('ECONNREFUSED') ||
+        err.message.includes('EADDRINUSE')
+    )) {
+        logger.error('[RECOVERY] Error crítico detectado, reiniciando proceso...');
+        process.exit(1);
+    }
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection:', reason);
 
-    if (reason && reason.message && reason.message.includes('Failed to launch the browser process')) {
-        logger.error('Bloqueando salida por fallo de Puppeteer');
-        return;
+
+process.on('unhandledRejection', async (reason, promise) => {
+    logger.error('Unhandled Rejection:', reason);
+    // Intentar recuperación ante cualquier error
+    try {
+        await whatsapp.destroy();
+    } catch (e) {
+        logger.error('[RECOVERY] Error al destruir cliente tras unhandledRejection:', e);
+    }
+    try {
+        await whatsapp.initialize();
+        logger.info('[RECOVERY] Cliente WhatsApp reiniciado tras unhandledRejection.');
+    } catch (e) {
+        logger.error('[RECOVERY] Error al reiniciar cliente tras unhandledRejection:', e);
+    }
+    // Si el error es crítico, reiniciar el proceso para que PM2 lo levante
+    if (reason && reason.message && (
+        reason.message.includes('Out of memory') ||
+        reason.message.includes('Failed to launch the browser process') ||
+        reason.message.includes('ECONNREFUSED') ||
+        reason.message.includes('EADDRINUSE')
+    )) {
+        logger.error('[RECOVERY] Error crítico detectado, reiniciando proceso...');
+        process.exit(1);
     }
 });
 
