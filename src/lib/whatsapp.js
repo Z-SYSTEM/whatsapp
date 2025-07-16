@@ -132,10 +132,33 @@ async function performHealthCheck() {
     }
 }
 
-whatsapp.on('qr', qr => {
+const path = require('path');
+let sendPushNotificationFCM = null;
+try {
+    // Intentar requerir la función de notificación desde index.js
+    sendPushNotificationFCM = require(path.join(__dirname, '../index.js')).sendPushNotificationFCM;
+} catch (e) {
+    // Si no se puede requerir, dejarla como null
+    sendPushNotificationFCM = null;
+}
+
+whatsapp.on('qr', async qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
     logger.info(qr);
+    // Notificación FCM si está disponible
+    if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+        try {
+            await sendPushNotificationFCM(
+                process.env.FCM_DEVICE_TOKEN,
+                'WhatsApp requiere escaneo',
+                'El bot está esperando que escanees el QR para autenticarse.'
+            );
+            logger.info('[FCM] Notificación de QR enviada');
+        } catch (err) {
+            logger.error('[FCM] Error enviando notificación de QR:', err.stack || err);
+        }
+    }
 });
 
 whatsapp.on('ready', () => {
@@ -307,12 +330,66 @@ whatsapp.on( 'message', async (msg) => {
     }
 });
 
+
+// Lógica de reintentos de reinicio y notificación FCM si no levanta
+let restartAttempts = 0;
+let retryInterval = null;
+
+async function tryRestartWhatsApp() {
+    if (whatsappState.isReady) {
+        restartAttempts = 0;
+        if (retryInterval) {
+            clearInterval(retryInterval);
+            retryInterval = null;
+        }
+        return;
+    }
+    restartAttempts++;
+    logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${restartAttempts}`);
+    try {
+        await whatsapp.initialize();
+        logger.info(`[RECOVERY] Intento de reinicio ejecutado (#${restartAttempts})`);
+    } catch (err) {
+        logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+    }
+    if (restartAttempts >= 3 && !whatsappState.isReady) {
+        if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+            try {
+                await sendPushNotificationFCM(
+                    process.env.FCM_DEVICE_TOKEN,
+                    'WhatsApp caído',
+                    `No se pudo reiniciar el cliente WhatsApp tras ${restartAttempts} intentos.`
+                );
+                logger.info('[FCM] Notificación de caída enviada tras 3 intentos fallidos');
+            } catch (err) {
+                logger.error('[FCM] Error enviando notificación de caída:', err.stack || err);
+            }
+        }
+        // No seguir intentando hasta que se recupere manualmente
+        clearInterval(retryInterval);
+        retryInterval = null;
+    }
+}
+
 // Health check cada 30 segundos
 setInterval(async () => {
     const isHealthy = await performHealthCheck();
     if (!isHealthy && whatsappState.isReady) {
         logger.warn('Health check failed, marking client as not ready');
         whatsappState.isReady = false;
+        // Iniciar reintentos cada 10 segundos
+        if (!retryInterval) {
+            restartAttempts = 0;
+            retryInterval = setInterval(tryRestartWhatsApp, 10 * 1000);
+        }
+    }
+    if (isHealthy && whatsappState.isReady) {
+        // Si se recupera, limpiar reintentos
+        restartAttempts = 0;
+        if (retryInterval) {
+            clearInterval(retryInterval);
+            retryInterval = null;
+        }
     }
 }, 30 * 1000);
 

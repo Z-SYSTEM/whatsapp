@@ -1,3 +1,49 @@
+# WhatsApp BOT Backend
+
+## Descripción
+Backend Node.js para automatización y monitoreo de WhatsApp usando `whatsapp-web.js`, con notificaciones de estado vía Firebase Cloud Messaging (FCM) y robusto manejo de errores y reinicios.
+
+## Características principales
+- **Reintentos automáticos:** Si el cliente WhatsApp falla, se intenta reiniciar cada 10 segundos.
+- **Notificación FCM solo en fallos persistentes:** Si tras 3 intentos el cliente no se recupera, se envía una notificación push vía FCM.
+- **Notificación de QR:** Cuando se genera un QR para autenticación, se envía una notificación FCM.
+- **Logs detallados:** Incluye información de payload y respuesta de FCM, contexto de errores y uso de recursos.
+- **Manejo de errores y recuperación:** Reinicio automático ante fallos, limpieza de listeners y recursos.
+- **Configuración por variables de entorno:** Tokens, endpoints y credenciales se gestionan por `.env`.
+
+## Variables de entorno requeridas
+- `FCM_DEVICE_TOKEN`: Token del dispositivo para notificaciones push.
+- `ONDOWN`: (opcional) Endpoint para notificar caídas.
+- `ONMESSAGE`: (opcional) Endpoint para notificar mensajes/calls.
+
+## Flujo de recuperación y notificación
+1. Si el cliente WhatsApp deja de estar listo, se marca como no disponible.
+2. Se inicia un intervalo de reintentos cada 10 segundos.
+3. Si tras 3 intentos el cliente sigue caído, se envía notificación FCM y se detienen los reintentos automáticos.
+4. Si el cliente se recupera, se limpian los contadores y no se notifica.
+
+## Ejecución
+```bash
+npm install
+node src/index.js
+```
+
+## Logs
+- Los logs incluyen información de intentos de recuperación, notificaciones FCM (payload y respuesta), y contexto de errores.
+
+## Notas de desarrollo
+- El código relevante para la lógica de reintentos y notificación se encuentra en `src/lib/whatsapp.js`.
+- La función de envío de notificaciones FCM está en `src/index.js`.
+
+## Git workflow sugerido
+```bash
+git add .
+git commit -m "feat: retry WhatsApp client every 10s, FCM notification after 3 failures, improved logging"
+git tag v1.2.0
+git push && git push --tags
+```
+
+---
 # WhatsApp API
 
 API REST para envío de mensajes de WhatsApp utilizando whatsapp-web.js.
