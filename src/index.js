@@ -8,7 +8,8 @@ let admin = null;
 let canSendPush = false;
 let sendPushNotificationFCM = async () => {};
 
-// Buscar credencial en la ruta indicada por FCM_CREDENTIALS_PATH o en ../../firebase-credentials.json
+// Exportar función FCM para uso en whatsapp.js
+module.exports.sendPushNotificationFCM = sendPushNotificationFCM;
 const credPath = process.env.FCM_CREDENTIALS_PATH
     ? process.env.FCM_CREDENTIALS_PATH
     : path.resolve(__dirname, '../../firebase-credentials.json');

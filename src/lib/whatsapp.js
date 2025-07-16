@@ -500,7 +500,7 @@ process.on('unhandledRejection', (reason, promise) => {
     logger.error(`Unhandled Rejection: ${reason}`);
 });
 
-module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation };
+module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence, sendPushNotificationFCM };
 
 
 
