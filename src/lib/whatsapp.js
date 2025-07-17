@@ -109,8 +109,36 @@ function handleSessionError(error) {
         try {
             execSync('pkill -f puppeteer');
             execSync('pkill -f chrome');
-            fs.unlinkSync('/root/app/soporte/.wwebjs_auth/session-cliente-2/SingletonLock');
-            logger.info('Bloqueo eliminado, intentando re-iniciar...');
+
+            // Construir ruta dinámica del lock según clientId/BOT_NAME
+            const clientId = process.env.BOT_NAME || 'default-bot';
+            const sessionDir = path.resolve(process.cwd(), `.wwebjs_auth/session-${clientId}`);
+            const lockPath = path.join(sessionDir, 'SingletonLock');
+
+            // Verificar si el lock existe
+            if (fs.existsSync(lockPath)) {
+                // Verificar si está en uso con lsof (solo en Linux)
+                let inUse = false;
+                if (process.platform === 'linux') {
+                    try {
+                        const lsofOut = execSync(`lsof "${lockPath}" || true`).toString();
+                        if (lsofOut && lsofOut.split('\n').length > 1) {
+                            inUse = true;
+                        }
+                    } catch (e) {
+                        // Si lsof falla, asumimos que no está en uso
+                        inUse = false;
+                    }
+                }
+                if (!inUse) {
+                    fs.unlinkSync(lockPath);
+                    logger.info(`Bloqueo SingletonLock eliminado: ${lockPath}`);
+                } else {
+                    logger.warn(`No se elimina SingletonLock porque está en uso: ${lockPath}`);
+                }
+            } else {
+                logger.info(`No existe SingletonLock para eliminar: ${lockPath}`);
+            }
             // Marcar como no listo para que el intervalo lo reinicie
             whatsappState.isReady = false;
         } catch (e) {
