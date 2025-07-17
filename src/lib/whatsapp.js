@@ -31,6 +31,7 @@ const whatsapp = new Client({
       executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
     }),
     headless: true,
+    dumpio: true, // Captura logs de Chrome en la consola
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
   authStrategy: new LocalAuth({
