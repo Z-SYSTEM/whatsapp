@@ -17,6 +17,12 @@ function cleanupProcessListeners() {
 }
 var axios = require('axios');
 require('dotenv').config()
+
+// Control estricto: BOT_NAME es obligatorio
+if (!process.env.BOT_NAME || !process.env.BOT_NAME.trim()) {
+    console.error('\n[ERROR] Debes definir BOT_NAME en el archivo .env. El bot no puede arrancar sin un identificador único.\n');
+    process.exit(1);
+}
 const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
 const { config } = require('dotenv');
