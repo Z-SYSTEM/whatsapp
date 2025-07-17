@@ -35,7 +35,7 @@ const whatsapp = new Client({
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
   authStrategy: new LocalAuth({
-    clientId: "cliente-2"
+    clientId: process.env.BOT_NAME || "default-bot"
   }),
   webVersionCache: {
     type: 'remote',
@@ -94,15 +94,11 @@ function handleSessionError(error) {
         if (whatsappState.wasEverReady) {
             // Notificación FCM explícita de sesión cerrada
             if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-                sendPushNotificationFCM(
+                sendPushNotificationFCMWrapper(
                     process.env.FCM_DEVICE_TOKEN,
                     'WhatsApp sesión cerrada',
                     'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
-                ).then(() => {
-                    logger.info('[FCM] Notificación de sesión cerrada enviada');
-                }).catch(err => {
-                    logger.error('[FCM] Error enviando notificación de sesión cerrada:', err.stack || err);
-                });
+                );
             }
         }
         return true;
@@ -153,22 +149,28 @@ try {
     sendPushNotificationFCM = null;
 }
 
+// Enviar notificación FCM y loguear solo title y body
+async function sendPushNotificationFCMWrapper(token, title, body) {
+    if (!sendPushNotificationFCM) return;
+    try {
+        await sendPushNotificationFCM(token, title, body);
+        logger.info(`[FCM] Notificación enviada | title: ${title} | body: ${body}`);
+    } catch (err) {
+        logger.error(`[FCM] Error enviando notificación | title: ${title} | body: ${body} | error: ${err.stack || err}`);
+    }
+}
+
 whatsapp.on('qr', async qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
     logger.info(qr);
     // Notificación FCM si está disponible
     if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-        try {
-            await sendPushNotificationFCM(
-                process.env.FCM_DEVICE_TOKEN,
-                'WhatsApp requiere escaneo',
-                'El bot está esperando que escanees el QR para autenticarse.'
-            );
-            logger.info('[FCM] Notificación de QR enviada');
-        } catch (err) {
-            logger.error('[FCM] Error enviando notificación de QR:', err.stack || err);
-        }
+        await sendPushNotificationFCMWrapper(
+            process.env.FCM_DEVICE_TOKEN,
+            'WhatsApp requiere escaneo',
+            'El bot está esperando que escanees el QR para autenticarse.'
+        );
     }
 });
 
@@ -205,15 +207,11 @@ whatsapp.on('disconnected', (reason) => {
         notifyDown('Sesión cerrada: ' + (reason || 'unknown'));
         // Notificación FCM explícita de sesión cerrada
         if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-            sendPushNotificationFCM(
+            sendPushNotificationFCMWrapper(
                 process.env.FCM_DEVICE_TOKEN,
                 'WhatsApp sesión cerrada',
                 'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
-            ).then(() => {
-                logger.info('[FCM] Notificación de sesión cerrada enviada');
-            }).catch(err => {
-                logger.error('[FCM] Error enviando notificación de sesión cerrada:', err.stack || err);
-            });
+            );
         }
     }
 });
@@ -388,16 +386,11 @@ async function tryRestartWhatsApp() {
     if (restartAttempts >= 3 && !whatsappState.isReady) {
         logger.warn(`[RECOVERY] Se alcanzaron ${restartAttempts} chequeos fallidos. Enviando notificación FCM de caída.`);
         if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-            try {
-                await sendPushNotificationFCM(
-                    process.env.FCM_DEVICE_TOKEN,
-                    'WhatsApp caído',
-                    `No se pudo reiniciar el cliente WhatsApp tras ${restartAttempts} intentos.`
-                );
-                logger.info('[FCM] Notificación de caída enviada tras 3 intentos fallidos');
-            } catch (err) {
-                logger.error('[FCM] Error enviando notificación de caída:', err.stack || err);
-            }
+            await sendPushNotificationFCMWrapper(
+                process.env.FCM_DEVICE_TOKEN,
+                'WhatsApp caído',
+                `No se pudo reiniciar el cliente WhatsApp tras ${restartAttempts} intentos.`
+            );
         }
         // No seguir intentando hasta que se recupere manualmente
         clearInterval(retryInterval);
@@ -449,16 +442,11 @@ async function recoverySequence() {
     if (!recovered) {
         logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
         if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-            try {
-                await sendPushNotificationFCM(
-                    process.env.FCM_DEVICE_TOKEN,
-                    'WhatsApp caído',
-                    'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
-                );
-                logger.info('[FCM] Notificación de caída enviada tras 3 intentos fallidos');
-            } catch (err) {
-                logger.error('[FCM] Error enviando notificación de caída:', err.stack || err);
-            }
+            await sendPushNotificationFCMWrapper(
+                process.env.FCM_DEVICE_TOKEN,
+                'WhatsApp caído',
+                'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
+            );
         }
     }
     recoveryInProgress = false;
