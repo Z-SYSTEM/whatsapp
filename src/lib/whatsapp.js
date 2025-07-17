@@ -43,7 +43,7 @@ const whatsapp = new Client({
   }
 });
 
-const whatsappState = { isReady: false };
+const whatsappState = { isReady: false, wasEverReady: false };
 
 // Variable para trackear última operación exitosa
 let lastSuccessfulOperation = Date.now();
@@ -88,17 +88,28 @@ function handleSessionError(error) {
         error.message.includes('Protocol error') ||
         error.message.includes('Target closed')
     );
-    
     if (isSessionClosed) {
         logger.warn('Session closed detected, marking client as not ready');
         whatsappState.isReady = false;
+        if (whatsappState.wasEverReady) {
+            // Notificación FCM explícita de sesión cerrada
+            if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+                sendPushNotificationFCM(
+                    process.env.FCM_DEVICE_TOKEN,
+                    'WhatsApp sesión cerrada',
+                    'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
+                ).then(() => {
+                    logger.info('[FCM] Notificación de sesión cerrada enviada');
+                }).catch(err => {
+                    logger.error('[FCM] Error enviando notificación de sesión cerrada:', err.stack || err);
+                });
+            }
+        }
         return true;
     }
-    
     // Manejar error de SingletonLock
     if (error.message && error.message.includes('SingletonLock')) {
         logger.warn('Intentando resolver bloqueo por SingletonLock...');
-
         try {
             execSync('pkill -f puppeteer');
             execSync('pkill -f chrome');
@@ -111,7 +122,6 @@ function handleSessionError(error) {
         }
         return true;
     }
-    
     return false;
 }
 
@@ -165,6 +175,7 @@ whatsapp.on('qr', async qr => {
 whatsapp.on('ready', () => {
     logger.info('WhatsApp client is ready!');
     whatsappState.isReady = true;
+    whatsappState.wasEverReady = true;
     updateLastOperation();
 });
 
@@ -189,7 +200,22 @@ async function notifyDown(reason) {
 whatsapp.on('disconnected', (reason) => {
     logger.warn(`WhatsApp client disconnected: ${reason}`);
     whatsappState.isReady = false;
-    notifyDown(reason);
+    if (whatsappState.wasEverReady) {
+        // Notificar solo si alguna vez estuvo listo
+        notifyDown('Sesión cerrada: ' + (reason || 'unknown'));
+        // Notificación FCM explícita de sesión cerrada
+        if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+            sendPushNotificationFCM(
+                process.env.FCM_DEVICE_TOKEN,
+                'WhatsApp sesión cerrada',
+                'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
+            ).then(() => {
+                logger.info('[FCM] Notificación de sesión cerrada enviada');
+            }).catch(err => {
+                logger.error('[FCM] Error enviando notificación de sesión cerrada:', err.stack || err);
+            });
+        }
+    }
 });
 
 whatsapp.on('auth_failure', (msg) => {
@@ -387,6 +413,11 @@ let recoveryInProgress = false;
 async function recoverySequence() {
     if (recoveryInProgress) {
         logger.warn('[RECOVERY] Ya hay un recovery en progreso, omitiendo nuevo intento');
+        return;
+    }
+    // Solo intentar recovery si alguna vez hubo sesión (no si está esperando QR)
+    if (!whatsappState.wasEverReady) {
+        logger.warn('[RECOVERY] No se ha establecido sesión nunca (esperando QR), omitiendo recovery.');
         return;
     }
     recoveryInProgress = true;
