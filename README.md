@@ -76,3 +76,88 @@ Importa las colecciones desde la carpeta `docs/`:
 1. Abre Postman
 2. Importa los archivos desde la carpeta `docs/`
 3. Configura las variables de entorno según tu servidor
+
+# Estructura del webhook ONMESSAGE
+
+Cuando se recibe un mensaje, el backend envía un JSON al endpoint definido en la variable `ONMESSAGE`. Todos los mensajes usan la misma estructura base:
+
+```json
+{
+  "phoneNumber": "1234567890",        // Número del remitente (sin @c.us)
+  "type": "chat",                     // Tipo de mensaje (chat, image, video, audio, ptt, document, sticker, location, contact, vcard, etc)
+  "from": "1234567890@c.us",          // Identificador completo del remitente
+  "id": "ABCD1234567890",             // ID único del mensaje
+  "timestamp": 1626791234,              // Timestamp del mensaje
+  "body": "Texto o caption",           // Texto del mensaje o caption (puede estar vacío)
+  "hasMedia": false,                    // Indica si el mensaje tiene contenido multimedia
+  "data": {                             // Información adicional según el tipo de mensaje
+    // ... ver ejemplos abajo ...
+  }
+}
+```
+
+### Ejemplos de `data` según el tipo de mensaje
+
+- **Texto (chat):**
+  - `data` no está presente.
+
+- **Imagen:**
+  ```json
+  "data": {
+    "mimetype": "image/jpeg",
+    "filename": "imagen.jpg",
+    "data": "BASE64_DE_LA_IMAGEN"
+  }
+  ```
+
+- **Video:**
+  ```json
+  "data": {
+    "mimetype": "video/mp4",
+    "filename": "video.mp4",
+    "data": "BASE64_DEL_VIDEO"
+  }
+  ```
+
+- **Audio / PTT:**
+  ```json
+  "data": {
+    "mimetype": "audio/ogg",
+    "filename": "audio.ogg",
+    "data": "BASE64_DEL_AUDIO"
+  }
+  ```
+
+- **Documento:**
+  ```json
+  "data": {
+    "mimetype": "application/pdf",
+    "filename": "archivo.pdf",
+    "data": "BASE64_DEL_DOCUMENTO"
+  }
+  ```
+
+- **Sticker:**
+  ```json
+  "data": {
+    "mimetype": "image/webp",
+    "filename": "sticker.webp",
+    "data": "BASE64_DEL_STICKER"
+  }
+  ```
+
+- **Ubicación:**
+  ```json
+  "data": {
+    "latitude": -34.6037,
+    "longitude": -58.3816,
+    "description": "Buenos Aires"
+  }
+  ```
+
+- **Contacto / vCard:**
+  ```json
+  "data": {
+    "vcard": "BEGIN:VCARD\nVERSION:3.0\nFN:Juan Perez\nTEL;TYPE=CELL:1234567890\nEND:VCARD"
+  }
+  ```
