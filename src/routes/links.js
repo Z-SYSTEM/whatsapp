@@ -11,12 +11,7 @@ const logger = require('../lib/logger');
 const router = Router();
 
 router.post('/send', async (req, res) => {
-    let clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || (req.connection.socket ? req.connection.socket.remoteAddress : null);
-    // Si la IP es IPv6 con formato ::ffff:IPv4, extraer solo la IPv4
-    if (clientIp && clientIp.startsWith('::ffff:')) {
-        clientIp = clientIp.replace('::ffff:', '');
-    }
-    logger.info(`Received request to /send from IP: ${clientIp}`);
+    // Eliminado log de IP para /send por solicitud
 
     // Verificación de token de acceso
     const authHeader = req.headers.authorization;

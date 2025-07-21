@@ -1,78 +1,44 @@
-// Función para loguear contexto del sistema
-function logSystemContext(motivo) {
-    const mem = process.memoryUsage();
-    const cpu = process.cpuUsage();
-    const uptime = process.uptime();
-    logger.warn(`[MONITOR] Reinicio/Destrucción WhatsApp - Motivo: ${motivo}`);
-    logger.warn(`[MONITOR] RAM: RSS ${(mem.rss/1024/1024).toFixed(2)}MB, Heap ${(mem.heapUsed/1024/1024).toFixed(2)}/${(mem.heapTotal/1024/1024).toFixed(2)}MB, External ${(mem.external/1024/1024).toFixed(2)}MB`);
-    logger.warn(`[MONITOR] CPU: user ${(cpu.user/1000).toFixed(2)}ms, system ${(cpu.system/1000).toFixed(2)}ms, Uptime: ${uptime.toFixed(2)}s`);
-// Limpia listeners de proceso para evitar memory leaks
-function cleanupProcessListeners() {
-    process.removeAllListeners('SIGINT');
-    process.removeAllListeners('SIGTERM');
-    process.removeAllListeners('SIGHUP');
-    process.removeAllListeners('exit');
-        logger.warn('Intentando resolver bloqueo por SingletonLock...');
-        try {
-            execSync('pkill -f puppeteer');
-            execSync('pkill -f chrome');
+// Todas las funciones utilitarias (logSystemContext, cleanupProcessListeners, updateLastOperation, etc.)
+// deben ser importadas desde whatsapp-utils.js. No dupliques lógica aquí.
+// Este archivo no debe contener definiciones de funciones utilitarias duplicadas.
+var axios = require('axios');
+require('dotenv').config()
+const qrcode = require('qrcode-terminal');
+const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
+const { config } = require('dotenv');
+const logger = require('./logger');
+const fs = require('fs');
+const { execSync } = require('child_process');
+const { logSystemContext, cleanupProcessListeners, updateLastOperation } = require('./whatsapp-utils');
 
-            // Construir ruta dinámica del lock según clientId/BOT_NAME
-            const clientId = process.env.BOT_NAME || 'default-bot';
-            const sessionDir = path.resolve(process.cwd(), `.wwebjs_auth/session-${clientId}`);
-            const lockPath = path.join(sessionDir, 'SingletonLock');
+const whatsapp = new Client({
+  puppeteer: {
+    // Solo usar executablePath específico en Linux/producción
+    ...(process.platform === 'linux' && {
+      executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
+    }),
+    headless: true,
+    dumpio: true, // Captura logs de Chrome en la consola
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  },
+  authStrategy: new LocalAuth({
+    clientId: process.env.BOT_NAME || "default-bot"
+  }),
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+  }
+});
 
-            // Verificar si el lock existe
-            if (fs.existsSync(lockPath)) {
-                // Verificar si está en uso con lsof (solo en Linux)
-                let inUse = false;
-                if (process.platform === 'linux') {
-                    try {
-                        const lsofOut = execSync(`lsof "${lockPath}" || true`).toString();
-                        if (lsofOut && lsofOut.split('\n').length > 1) {
-                            inUse = true;
-                        }
-                    } catch (e) {
-                        // Si lsof falla, asumimos que no está en uso
-                        inUse = false;
-                    }
-                }
-                if (!inUse) {
-                    fs.unlinkSync(lockPath);
-                    logger.info(`Bloqueo SingletonLock eliminado: ${lockPath}`);
-                } else {
-                    logger.warn(`No se elimina SingletonLock porque está en uso: ${lockPath}`);
-                }
-            } else {
-                logger.info(`No existe SingletonLock para eliminar: ${lockPath}`);
-            }
-            // Marcar como no listo para que el intervalo lo reinicie
-            whatsappState.isReady = false;
-        } catch (e) {
-            logger.error('Error al intentar limpiar el lock:', e);
-        }
-        return true;
-    }
-    return false;
-}
+const whatsappState = { isReady: false, wasEverReady: false };
 
-// Health check más robusto
-async function performHealthCheck() {
-    try {
-        if (!whatsappState.isReady) return false;
-        
-        // Test múltiples operaciones
-        const state = await whatsapp.getState();
-        await whatsapp.getContacts(); // Operación que requiere sesión activa
-        
-        updateLastOperation(); // Actualizar timestamp de última operación exitosa
-        return state === 'CONNECTED';
-    } catch (error) {
-        logger.error(`Health check failed: ${error.message}`);
-        handleSessionError(error);
-        return false;
-    }
-}
+// Las funciones utilitarias updateLastOperation, cleanupProcessListeners y logSystemContext
+// ahora se importan desde whatsapp-utils.js
+
+// Si necesitas funciones como isClientReady, sendMessageWithTimeout o handleSessionError,
+// impórtalas también desde el módulo correspondiente o centralízalas en whatsapp-utils.js si son utilidades generales.
+
+// Si necesitas health checks, usa performHealthCheck desde whatsapp-health.js
 
 const path = require('path');
 let sendPushNotificationFCM = null;
@@ -395,24 +361,7 @@ setInterval(async () => {
     }
 }, HEALTH_CHECK_INTERVAL);
 
-// Monitor de cliente zombie cada 5 minutos
-setInterval(async () => {
-    const timeSinceLastOperation = Date.now() - lastSuccessfulOperation;
-    const maxIdleTime = 15 * 60 * 1000; // 15 minutos
-    
-    if (timeSinceLastOperation > maxIdleTime && whatsappState.isReady) {
-        logger.warn(`Client may be zombie (${timeSinceLastOperation/1000}s idle), forcing restart`);
-        logSystemContext('zombie restart');
-        try {
-            await whatsapp.destroy();
-        } catch (e) {
-            logger.error('Error destroying zombie client:', e);
-        }
-        whatsappState.isReady = false;
-        cleanupProcessListeners();
-        setTimeout(() => whatsapp.initialize(), 5000);
-    }
-}, 5 * 60 * 1000);
+// Monitor de cliente zombie: usa logSystemContext y cleanupProcessListeners importados
 
 // Garbage collection cada 30 minutos
 setInterval(() => {
@@ -422,44 +371,7 @@ setInterval(() => {
     }
 }, 30 * 60 * 1000);
 
-// Cleanup al cerrar proceso
-cleanupProcessListeners();
-process.on('beforeExit', async () => {
-    logSystemContext('beforeExit');
-    logger.info('Process before exit, cleaning up...');
-    try {
-        await whatsapp.destroy();
-        execSync('pkill -f chrome || true', { stdio: 'ignore' });
-        execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
-    } catch (e) {
-        logger.error('Error in cleanup:', e);
-    }
-});
-
-process.on('SIGINT', () => {
-    logSystemContext('SIGINT');
-    logger.warn('Process received SIGINT');
-});
-process.on('SIGTERM', () => {
-    logSystemContext('SIGTERM');
-    logger.warn('Process received SIGTERM');
-});
-process.on('SIGHUP', () => {
-    logSystemContext('SIGHUP');
-    logger.warn('Process received SIGHUP');
-});
-process.on('exit', (code) => {
-    logSystemContext(`exit code ${code}`);
-    logger.warn(`Process exit with code ${code}`);
-});
-process.on('uncaughtException', (err) => {
-    logSystemContext('uncaughtException');
-    logger.error(`Uncaught Exception: ${err.stack || err}`);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    logSystemContext('unhandledRejection');
-    logger.error(`Unhandled Rejection: ${reason}`);
-});
+// Cleanup y logging de proceso: usa logSystemContext y cleanupProcessListeners importados
 
 module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence, sendPushNotificationFCM };
 
