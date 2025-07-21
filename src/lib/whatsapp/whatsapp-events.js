@@ -206,3 +206,24 @@ whatsapp.on('message', async (msg) => {
         }
     }
 });
+
+whatsapp.on('qr', async qr => {
+    logger.info('QR code generated for WhatsApp session');
+    qrcode.generate(qr, { small: true });
+    logger.info(qr);
+    // Notificación FCM si está disponible
+    if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+        await sendPushNotificationFCMWrapper(
+            process.env.FCM_DEVICE_TOKEN,
+            'WhatsApp requiere escaneo',
+            'El bot está esperando que escanees el QR para autenticarse.'
+        );
+    }
+});
+
+whatsapp.on('ready', () => {
+    logger.info('WhatsApp client is ready!');
+    whatsappState.isReady = true;
+    whatsappState.wasEverReady = true;
+    updateLastOperation();
+});
