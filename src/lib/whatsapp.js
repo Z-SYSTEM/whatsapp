@@ -38,7 +38,9 @@ const whatsappState = { isReady: false, wasEverReady: false };
 // Si necesitas funciones como isClientReady, sendMessageWithTimeout o handleSessionError,
 // impórtalas también desde el módulo correspondiente o centralízalas en whatsapp-utils.js si son utilidades generales.
 
-// Si necesitas health checks, usa performHealthCheck desde whatsapp-health.js
+
+// Importar performHealthCheck para chequeos de salud
+const { performHealthCheck } = require('./whatsapp/whatsapp-health');
 
 const path = require('path');
 let sendPushNotificationFCM = null;
