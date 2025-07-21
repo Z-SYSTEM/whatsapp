@@ -9,7 +9,7 @@ const { config } = require('dotenv');
 const logger = require('./logger');
 const fs = require('fs');
 const { execSync } = require('child_process');
-const { logSystemContext, cleanupProcessListeners, updateLastOperation } = require('./whatsapp-utils');
+const { logSystemContext, cleanupProcessListeners, updateLastOperation, isClientReady, handleSessionError, sendMessageWithTimeout } = require('./whatsapp/whatsapp-utils');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -18,7 +18,7 @@ const whatsapp = new Client({
       executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
     }),
     headless: true,
-    dumpio: true, // Captura logs de Chrome en la consola
+    dumpio: false, // Captura logs de Chrome en la consola
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
   authStrategy: new LocalAuth({
