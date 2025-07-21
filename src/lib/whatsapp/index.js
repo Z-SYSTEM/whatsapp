@@ -1,5 +1,5 @@
 const { whatsapp, MessageMedia, whatsappState } = require('./whatsapp-client');
-const { logSystemContext, cleanupProcessListeners, updateLastOperation } = require('./whatsapp-utils');
+const { logSystemContext, cleanupProcessListeners, updateLastOperation, isClientReady } = require('./whatsapp-utils');
 const { performHealthCheck } = require('./whatsapp-health');
 require('./whatsapp-events');
 
@@ -10,5 +10,6 @@ module.exports = {
   logSystemContext,
   cleanupProcessListeners,
   updateLastOperation,
+  isClientReady,
   performHealthCheck
 };

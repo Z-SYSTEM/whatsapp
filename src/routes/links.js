@@ -93,21 +93,21 @@ router.post('/send', async (req, res) => {
                 return res.status(400).json({ error: 'Destinatario no permitido.' });
             }
 
-            const number_details = await whatsapp.getNumberId(chatId);
+            const number_details = await whatsappModule.whatsapp.getNumberId(chatId);
 
             if (number_details) {
                 if (pdfUrl) {
                     logger.info(`Sending PDF to ${chatId}`);
-                    const media = await MessageMedia.fromUrl(pdfUrl, { mimeType: 'application/pdf' });
-                    await whatsapp.sendMessage(chatId, media, { caption: message || '' });
+                    const media = await whatsappModule.MessageMedia.fromUrl(pdfUrl, { mimeType: 'application/pdf' });
+                    await whatsappModule.whatsapp.sendMessage(chatId, media, { caption: message || '' });
                 } else if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
                     logger.info(`Sending ${imageUrls.length} images to ${chatId}`);
                     for (let i = 0; i < imageUrls.length; i++) {
                         try {
-                            const media = await MessageMedia.fromUrl(imageUrls[i], { unsafeMime: true });
+                            const media = await whatsappModule.MessageMedia.fromUrl(imageUrls[i], { unsafeMime: true });
                             // Solo enviar caption en la primera imagen
                             const caption = (i === 0 && message) ? message : '';
-                            await whatsapp.sendMessage(chatId, media, { caption });
+                            await whatsappModule.whatsapp.sendMessage(chatId, media, { caption });
                             logger.info(`Image ${i + 1}/${imageUrls.length} sent to ${chatId}`);
                             // Pequeña pausa entre imágenes para evitar spam
                             if (i < imageUrls.length - 1) {
@@ -120,11 +120,11 @@ router.post('/send', async (req, res) => {
                     }
                 } else if (imageUrl) {
                     logger.info(`Sending single image to ${chatId}`);
-                    const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-                    await whatsapp.sendMessage(chatId, media, { caption: message || '' });
+                    const media = await whatsappModule.MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+                    await whatsappModule.whatsapp.sendMessage(chatId, media, { caption: message || '' });
                 } else if (message) {
                     logger.info(`Sending text message to ${chatId}: ${message}`);
-                    await whatsapp.sendMessage(chatId, message);
+                    await whatsappModule.whatsapp.sendMessage(chatId, message);
                 }
                 logger.info(`Message sent to ${chatId}`);
                 return res.json({ status: true });

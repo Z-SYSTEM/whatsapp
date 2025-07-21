@@ -17,13 +17,7 @@ function registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, s
     whatsappState.isReady = false;
     if (whatsappState.wasEverReady) {
       notifyDown('Sesión cerrada: ' + (reason || 'unknown'));
-      if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-        sendPushNotificationFCMWrapper(
-          process.env.FCM_DEVICE_TOKEN,
-          'WhatsApp sesión cerrada',
-          'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
-        );
-      }
+      // Aquí puedes agregar lógica adicional si es necesario
     }
   });
   whatsapp.on('auth_failure', (msg) => {
