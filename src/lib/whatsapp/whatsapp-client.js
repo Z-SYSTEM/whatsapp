@@ -9,7 +9,7 @@ const whatsapp = new Client({
       executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
     }),
     headless: true,
-    dumpio: true,
+    // dumpio: true, // Desactivado para evitar logs de Chrome
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   },
   authStrategy: new LocalAuth({

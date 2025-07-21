@@ -171,7 +171,7 @@ whatsapp.on('message', async (msg) => {
             default:
                 break;
         }
-        logger.info(`Posting message to ONMESSAGE (${url}): ${JSON.stringify(data)}`);
+        logger.info(`Posting message to ONMESSAGE (${url}): ${JSON.stringify(payload)}`);
         let config = {
             headers: {
                 'Content-type': 'application/json'
