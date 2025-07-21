@@ -21,4 +21,22 @@ function updateLastOperation() {
     global.lastSuccessfulOperation = Date.now();
 }
 
-module.exports = { logSystemContext, cleanupProcessListeners, updateLastOperation };
+
+// Verifica si el cliente está realmente listo
+async function isClientReady(whatsapp, whatsappState) {
+    if (!whatsappState.isReady) {
+        return false;
+    }
+    try {
+        // Intentar una operación simple para verificar que la sesión está activa
+        const state = await whatsapp.getState();
+        updateLastOperation();
+        return state === 'CONNECTED';
+    } catch (error) {
+        logger.warn(`Client state check failed: ${error.message}`);
+        whatsappState.isReady = false;
+        return false;
+    }
+}
+
+module.exports = { logSystemContext, cleanupProcessListeners, updateLastOperation, isClientReady };

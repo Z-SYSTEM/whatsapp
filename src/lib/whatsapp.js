@@ -83,9 +83,22 @@ async function notifyDown(reason) {
 }
 
 
-// Registrar eventos críticos de conexión y autenticación
-const { registerWhatsappConnectionEvents } = require('./whatsapp/whatsapp-events');
+
+// Importar todas las funciones de registro de eventos
+const {
+  registerWhatsappConnectionEvents,
+  registerWhatsappCallEvents,
+  registerWhatsappMessageEvents,
+  registerWhatsappQrEvents,
+  registerWhatsappReadyEvents
+} = require('./whatsapp/whatsapp-events');
+
+// Registrar todos los handlers de eventos
 registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCMWrapper, logger);
+registerWhatsappCallEvents(whatsapp, logger, updateLastOperation);
+registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation);
+registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCMWrapper, sendPushNotificationFCM);
+registerWhatsappReadyEvents(whatsapp, whatsappState, logger, updateLastOperation);
 
 
 // Lógica de reintentos de reinicio y notificación FCM si no levanta
@@ -149,7 +162,7 @@ async function recoverySequence() {
     let recovered = false;
     for (let i = 1; i <= 3; i++) {
         // Verificar si el cliente ya está listo antes de intentar recovery
-        if (await isClientReady()) {
+        if (await isClientReady(whatsapp, whatsappState)) {
             logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
             recovered = true;
             break;
@@ -159,7 +172,7 @@ async function recoverySequence() {
             await whatsapp.initialize();
             // Esperar 2 segundos para ver si se pone ready
             await new Promise(res => setTimeout(res, 2000));
-            if (await isClientReady()) {
+            if (await isClientReady(whatsapp, whatsappState)) {
                 logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
                 recovered = true;
                 break;
@@ -184,15 +197,38 @@ async function recoverySequence() {
     recoveryInProgress = false;
 }
 
+
 setInterval(async () => {
-    const isHealthy = await performHealthCheck();
+  try {
+    if (!whatsappState.wasEverReady) return; // Solo chequea si alguna vez estuvo listo
+    const isHealthy = await performHealthCheck(whatsapp);
     if (!isHealthy) {
-        logger.warn('[HEALTH] Cliente WhatsApp no está listo, lanzando recovery');
-        await recoverySequence();
+      logger.warn('[HEALTH] Cliente WhatsApp no está listo, lanzando recovery');
+      await recoverySequence();
     }
+  } catch (err) {
+    logger.error(`Error during interval check: ${err && err.stack ? err.stack : err}`);
+  }
 }, HEALTH_CHECK_INTERVAL);
 
-// Monitor de cliente zombie: usa logSystemContext y cleanupProcessListeners importados
+
+// Monitor de cliente zombie cada 5 minutos
+setInterval(async () => {
+    const timeSinceLastOperation = Date.now() - (global.lastSuccessfulOperation || Date.now());
+    const maxIdleTime = 15 * 60 * 1000; // 15 minutos
+    if (timeSinceLastOperation > maxIdleTime && whatsappState.isReady) {
+        logger.warn(`Client may be zombie (${timeSinceLastOperation/1000}s idle), forcing restart`);
+        logSystemContext('zombie restart');
+        try {
+            await whatsapp.destroy();
+        } catch (e) {
+            logger.error('Error destroying zombie client:', e);
+        }
+        whatsappState.isReady = false;
+        cleanupProcessListeners();
+        setTimeout(() => whatsapp.initialize(), 5000);
+    }
+}, 5 * 60 * 1000);
 
 // Garbage collection cada 30 minutos
 setInterval(() => {
@@ -202,7 +238,43 @@ setInterval(() => {
     }
 }, 30 * 60 * 1000);
 
-// Cleanup y logging de proceso: usa logSystemContext y cleanupProcessListeners importados
+// Cleanup y logging de proceso al cerrar
+cleanupProcessListeners();
+process.on('beforeExit', async () => {
+    logSystemContext('beforeExit');
+    logger.info('Process before exit, cleaning up...');
+    try {
+        await whatsapp.destroy();
+        execSync('pkill -f chrome || true', { stdio: 'ignore' });
+        execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
+    } catch (e) {
+        logger.error('Error in cleanup:', e);
+    }
+});
+process.on('SIGINT', () => {
+    logSystemContext('SIGINT');
+    logger.warn('Process received SIGINT');
+});
+process.on('SIGTERM', () => {
+    logSystemContext('SIGTERM');
+    logger.warn('Process received SIGTERM');
+});
+process.on('SIGHUP', () => {
+    logSystemContext('SIGHUP');
+    logger.warn('Process received SIGHUP');
+});
+process.on('exit', (code) => {
+    logSystemContext(`exit code ${code}`);
+    logger.warn(`Process exit with code ${code}`);
+});
+process.on('uncaughtException', (err) => {
+    logSystemContext('uncaughtException');
+    logger.error(`Uncaught Exception: ${err.stack || err}`);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    logSystemContext('unhandledRejection');
+    logger.error(`Unhandled Rejection: ${reason}`);
+});
 
 module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence, sendPushNotificationFCM };
 
