@@ -241,14 +241,12 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
   });
 }
 
-function registerWhatsappQrEvents(whatsapp, logger) {
+function registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCMWrapper, sendPushNotificationFCM) {
   whatsapp.on('qr', async qr => {
     logger.info('QR code generated for WhatsApp session');
-    if (typeof qrcode !== 'undefined') {
-      qrcode.generate(qr, { small: true });
-    }
+    qrcode.generate(qr, { small: true });
     logger.info(qr);
-    if (typeof sendPushNotificationFCMWrapper !== 'undefined' && sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+    if (sendPushNotificationFCMWrapper && sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
       await sendPushNotificationFCMWrapper(
         process.env.FCM_DEVICE_TOKEN,
         'WhatsApp requiere escaneo',
