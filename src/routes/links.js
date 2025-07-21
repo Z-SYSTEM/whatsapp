@@ -170,14 +170,13 @@ router.get('/test', async (req, res) => {
     try {
         const clientReady = await isClientReady();
         if (clientReady) {
-            logger.info('WhatsApp client ready - test passed');
             res.status(200).json({ status: 'ok', whatsapp: 'ready' });
         } else {
-            logger.warn('WhatsApp client not ready - test failed');
+            logger.warn(`Health check on /test from IP: ${clientIp} client not ready - test failed`);
             res.status(503).json({ status: 'error', whatsapp: 'not ready' });
         }
     } catch (error) {
-        logger.error(`Error checking client status: ${error.message}`);
+        logger.error(`Health check on /test from IP: ${clientIp} Error checking client status: ${error.message}`);
         res.status(503).json({ status: 'error', whatsapp: 'check failed' });
     }
 });
