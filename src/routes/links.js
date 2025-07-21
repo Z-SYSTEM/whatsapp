@@ -1,9 +1,9 @@
 require('dotenv').config()
 const {Router} = require('express');
-const { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError } = require('../lib/whatsapp');
+const whatsappModule = require('../lib/whatsapp');
 let recoverySequence;
 try {
-    recoverySequence = require('../lib/whatsapp').recoverySequence;
+    recoverySequence = whatsappModule.recoverySequence;
 } catch (e) {
     recoverySequence = null;
 }
@@ -168,7 +168,15 @@ router.get('/test', async (req, res) => {
     logger.info(`Health check on /test from IP: ${clientIp}`);
     
     try {
-        const clientReady = await isClientReady();
+        if (!whatsappModule.whatsapp) {
+            logger.error(`Health check on /test from IP: ${clientIp} - whatsapp client is undefined`);
+            return res.status(503).json({ status: 'error', whatsapp: 'client undefined' });
+        }
+        if (!whatsappModule.whatsappState) {
+            logger.error(`Health check on /test from IP: ${clientIp} - whatsappState is undefined`);
+            return res.status(503).json({ status: 'error', whatsapp: 'state undefined' });
+        }
+        const clientReady = await whatsappModule.isClientReady(whatsappModule.whatsapp, whatsappModule.whatsappState);
         if (clientReady) {
             res.status(200).json({ status: 'ok', whatsapp: 'ready' });
         } else {
