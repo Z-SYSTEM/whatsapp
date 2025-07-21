@@ -6,111 +6,12 @@ function logSystemContext(motivo) {
     logger.warn(`[MONITOR] Reinicio/Destrucción WhatsApp - Motivo: ${motivo}`);
     logger.warn(`[MONITOR] RAM: RSS ${(mem.rss/1024/1024).toFixed(2)}MB, Heap ${(mem.heapUsed/1024/1024).toFixed(2)}/${(mem.heapTotal/1024/1024).toFixed(2)}MB, External ${(mem.external/1024/1024).toFixed(2)}MB`);
     logger.warn(`[MONITOR] CPU: user ${(cpu.user/1000).toFixed(2)}ms, system ${(cpu.system/1000).toFixed(2)}ms, Uptime: ${uptime.toFixed(2)}s`);
-}
 // Limpia listeners de proceso para evitar memory leaks
 function cleanupProcessListeners() {
     process.removeAllListeners('SIGINT');
     process.removeAllListeners('SIGTERM');
     process.removeAllListeners('SIGHUP');
     process.removeAllListeners('exit');
-    process.removeAllListeners('beforeExit');
-}
-var axios = require('axios');
-require('dotenv').config()
-
-// Control estricto: BOT_NAME es obligatorio
-if (!process.env.BOT_NAME || !process.env.BOT_NAME.trim()) {
-    console.error('\n[ERROR] Debes definir BOT_NAME en el archivo .env. El bot no puede arrancar sin un identificador único.\n');
-    process.exit(1);
-}
-const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
-const { config } = require('dotenv');
-const logger = require('./logger');
-const fs = require('fs');
-const { execSync } = require('child_process');
-
-const whatsapp = new Client({
-  puppeteer: {
-    // Solo usar executablePath específico en Linux/producción
-    ...(process.platform === 'linux' && {
-      executablePath: '/root/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
-    }),
-    headless: true,
-    dumpio: true, // Captura logs de Chrome en la consola
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  },
-  authStrategy: new LocalAuth({
-    clientId: process.env.BOT_NAME || "default-bot"
-  }),
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
-  }
-});
-
-const whatsappState = { isReady: false, wasEverReady: false };
-
-// Variable para trackear última operación exitosa
-let lastSuccessfulOperation = Date.now();
-
-// Función para actualizar timestamp de última operación
-function updateLastOperation() {
-    lastSuccessfulOperation = Date.now();
-}
-
-// Función para verificar si el cliente está realmente listo
-async function isClientReady() {
-    if (!whatsappState.isReady) {
-        return false;
-    }
-    
-    try {
-        // Intentar una operación simple para verificar que la sesión está activa
-        const state = await whatsapp.getState();
-        updateLastOperation();
-        return state === 'CONNECTED';
-    } catch (error) {
-        logger.warn(`Client state check failed: ${error.message}`);
-        whatsappState.isReady = false;
-        return false;
-    }
-}
-
-// Función para envío de mensajes con timeout
-async function sendMessageWithTimeout(chatId, message, options = {}, timeoutMs = 30000) {
-    return Promise.race([
-        whatsapp.sendMessage(chatId, message, options),
-        new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Send message timeout')), timeoutMs)
-        )
-    ]);
-}
-
-// Función para manejar errores de sesión cerrada
-function handleSessionError(error) {
-    const isSessionClosed = error.message && (
-        error.message.includes('Session closed') ||
-        error.message.includes('Protocol error') ||
-        error.message.includes('Target closed')
-    );
-    if (isSessionClosed) {
-        logger.warn('Session closed detected, marking client as not ready');
-        whatsappState.isReady = false;
-        if (whatsappState.wasEverReady) {
-            // Notificación FCM explícita de sesión cerrada
-            if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-                sendPushNotificationFCMWrapper(
-                    process.env.FCM_DEVICE_TOKEN,
-                    'WhatsApp sesión cerrada',
-                    'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
-                );
-            }
-        }
-        return true;
-    }
-    // Manejar error de SingletonLock
-    if (error.message && error.message.includes('SingletonLock')) {
         logger.warn('Intentando resolver bloqueo por SingletonLock...');
         try {
             execSync('pkill -f puppeteer');
