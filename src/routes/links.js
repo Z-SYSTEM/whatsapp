@@ -165,8 +165,7 @@ router.get('/test', async (req, res) => {
     if (clientIp && clientIp.startsWith('::ffff:')) {
         clientIp = clientIp.replace('::ffff:', '');
     }
-    logger.info(`Health check on /test from IP: ${clientIp}`);
-    
+   
     try {
         if (!whatsappModule.whatsapp) {
             logger.error(`Health check on /test from IP: ${clientIp} - whatsapp client is undefined`);
