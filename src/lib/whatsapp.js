@@ -80,28 +80,10 @@ async function notifyDown(reason) {
     }
 }
 
-whatsapp.on('disconnected', (reason) => {
-    logger.warn(`WhatsApp client disconnected: ${reason}`);
-    whatsappState.isReady = false;
-    if (whatsappState.wasEverReady) {
-        // Notificar solo si alguna vez estuvo listo
-        notifyDown('Sesión cerrada: ' + (reason || 'unknown'));
-        // Notificación FCM explícita de sesión cerrada
-        if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-            sendPushNotificationFCMWrapper(
-                process.env.FCM_DEVICE_TOKEN,
-                'WhatsApp sesión cerrada',
-                'La sesión de WhatsApp se ha cerrado. Se requiere acción.'
-            );
-        }
-    }
-});
 
-whatsapp.on('auth_failure', (msg) => {
-    logger.error(`Authentication failure: ${msg}`);
-    whatsappState.isReady = false;
-    notifyDown(msg);
-});
+// Registrar eventos críticos de conexión y autenticación
+const { registerWhatsappConnectionEvents } = require('./whatsapp/whatsapp-events');
+registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCMWrapper, logger);
 
 
 // Lógica de reintentos de reinicio y notificación FCM si no levanta
