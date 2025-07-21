@@ -201,7 +201,7 @@ async function recoverySequence() {
 setInterval(async () => {
   try {
     if (!whatsappState.wasEverReady) return; // Solo chequea si alguna vez estuvo listo
-    const isHealthy = await performHealthCheck(whatsapp);
+    const isHealthy = await isClientReady(whatsapp, whatsappState);
     if (!isHealthy) {
       logger.warn('[HEALTH] Cliente WhatsApp no está listo, lanzando recovery');
       await recoverySequence();
