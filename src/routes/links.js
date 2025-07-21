@@ -29,7 +29,7 @@ router.post('/send', async (req, res) => {
     }
 
     // Verificación más robusta del estado del cliente
-    const clientReady = await isClientReady();
+    const clientReady = await whatsappModule.isClientReady(whatsappModule.whatsapp, whatsappModule.whatsappState);
     if (!clientReady) {
         logger.warn('WhatsApp client not ready or session closed');
         return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
