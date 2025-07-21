@@ -68,9 +68,11 @@ whatsapp.on('message', async (msg) => {
                 break;
             case 'image':
                 payload.body = msg.caption || '';
+                logger.info('Iniciando descarga de media (imagen)...');
                 try {
                     const media = await msg.downloadMedia();
                     if (media) {
+                        logger.info('Descarga de media OK (imagen)');
                         payload.data = {
                             mimetype: media.mimetype,
                             filename: media.filename || undefined,
@@ -85,9 +87,11 @@ whatsapp.on('message', async (msg) => {
                 break;
             case 'video':
                 payload.body = msg.caption || '';
+                logger.info('Iniciando descarga de media (video)...');
                 try {
                     const media = await msg.downloadMedia();
                     if (media) {
+                        logger.info('Descarga de media OK (video)');
                         payload.data = {
                             mimetype: media.mimetype,
                             filename: media.filename || undefined,
@@ -103,9 +107,11 @@ whatsapp.on('message', async (msg) => {
             case 'audio':
             case 'ptt':
                 payload.body = '';
+                logger.info('Iniciando descarga de media (audio/ptt)...');
                 try {
                     const media = await msg.downloadMedia();
                     if (media) {
+                        logger.info('Descarga de media OK (audio/ptt)');
                         payload.data = {
                             mimetype: media.mimetype,
                             filename: media.filename || undefined,
@@ -120,9 +126,11 @@ whatsapp.on('message', async (msg) => {
                 break;
             case 'document':
                 payload.body = msg.caption || '';
+                logger.info('Iniciando descarga de media (documento)...');
                 try {
                     const media = await msg.downloadMedia();
                     if (media) {
+                        logger.info('Descarga de media OK (documento)');
                         payload.data = {
                             mimetype: media.mimetype,
                             filename: msg.filename || media.filename || undefined,
@@ -137,9 +145,11 @@ whatsapp.on('message', async (msg) => {
                 break;
             case 'sticker':
                 payload.body = '';
+                logger.info('Iniciando descarga de media (sticker)...');
                 try {
                     const media = await msg.downloadMedia();
                     if (media) {
+                        logger.info('Descarga de media OK (sticker)');
                         payload.data = {
                             mimetype: media.mimetype,
                             filename: media.filename || undefined,
