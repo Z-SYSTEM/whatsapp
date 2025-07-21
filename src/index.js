@@ -42,7 +42,48 @@ app.listen(puerto, () => {
     console.log(`Server on port ${puerto}`);
     logger.info(`Server started on port ${puerto}`);
     startMemoryMonitor();
-    startHealthCheck();
+    startHealthCheck({
+        isClientReady,
+        whatsapp,
+        whatsappState,
+        logger,
+        sendPushNotificationFCMWrapper: sendPushNotificationFCM,
+        recoverySequence: async () => {
+            let recovered = false;
+            for (let i = 1; i <= 3; i++) {
+                if (await isClientReady(whatsapp, whatsappState)) {
+                    logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
+                    recovered = true;
+                    break;
+                }
+                logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
+                try {
+                    await whatsapp.initialize();
+                    await new Promise(res => setTimeout(res, 2000));
+                    if (await isClientReady(whatsapp, whatsappState)) {
+                        logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
+                        recovered = true;
+                        break;
+                    }
+                } catch (err) {
+                    logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+                }
+                if (i < 3) {
+                    await new Promise(res => setTimeout(res, 10000));
+                }
+            }
+            if (!recovered) {
+                logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
+                if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+                    await sendPushNotificationFCM(
+                        process.env.FCM_DEVICE_TOKEN,
+                        'WhatsApp caído',
+                        'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
+                    );
+                }
+            }
+        }
+    });
 });
 
 
