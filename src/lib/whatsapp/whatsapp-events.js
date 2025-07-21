@@ -36,6 +36,13 @@ whatsapp.on('call', async (call) => {
 
 whatsapp.on('message', async (msg) => {
     logger.info(`Received message from ${msg.from} of type ${msg.type}`);
+    logger.info(`[ONMESSAGE][DEBUG] msg.id: ${msg.id ? msg.id._serialized : 'N/A'} | hasMedia: ${msg.hasMedia} | caption: ${msg.caption || ''} | body: ${msg.body || ''} | mimetype: ${msg.mimetype || ''} | filename: ${msg.filename || ''}`);
+    if (msg.location) {
+        logger.info(`[ONMESSAGE][DEBUG] location: lat=${msg.location.latitude}, lon=${msg.location.longitude}, desc=${msg.location.description}`);
+    }
+    if (msg.vcard) {
+        logger.info(`[ONMESSAGE][DEBUG] vcard: ${msg.vcard.substring(0, 200)}...`);
+    }
     if (msg.from === 'status@broadcast' || msg.from === 'status@c.us') {
         logger.info(`Estado ignorado de ${msg.from} | type: ${msg.type} | id: ${msg.id ? msg.id._serialized : 'N/A'}`);
         return;
