@@ -76,6 +76,8 @@ whatsapp.on('message', async (msg) => {
                             filename: media.filename || undefined,
                             data: media.data
                         };
+                    } else {
+                        logger.warn('downloadMedia() devolvió null para imagen.');
                     }
                 } catch (err) {
                     logger.error(`Error descargando imagen: ${err.stack || err}`);
@@ -91,6 +93,8 @@ whatsapp.on('message', async (msg) => {
                             filename: media.filename || undefined,
                             data: media.data
                         };
+                    } else {
+                        logger.warn('downloadMedia() devolvió null para video.');
                     }
                 } catch (err) {
                     logger.error(`Error descargando video: ${err.stack || err}`);
@@ -107,6 +111,8 @@ whatsapp.on('message', async (msg) => {
                             filename: media.filename || undefined,
                             data: media.data
                         };
+                    } else {
+                        logger.warn('downloadMedia() devolvió null para audio/ptt.');
                     }
                 } catch (err) {
                     logger.error(`Error descargando audio: ${err.stack || err}`);
@@ -122,6 +128,8 @@ whatsapp.on('message', async (msg) => {
                             filename: msg.filename || media.filename || undefined,
                             data: media.data
                         };
+                    } else {
+                        logger.warn('downloadMedia() devolvió null para documento.');
                     }
                 } catch (err) {
                     logger.error(`Error descargando documento: ${err.stack || err}`);
@@ -137,6 +145,8 @@ whatsapp.on('message', async (msg) => {
                             filename: media.filename || undefined,
                             data: media.data
                         };
+                    } else {
+                        logger.warn('downloadMedia() devolvió null para sticker.');
                     }
                 } catch (err) {
                     logger.error(`Error descargando sticker: ${err.stack || err}`);
@@ -168,6 +178,9 @@ whatsapp.on('message', async (msg) => {
             }
         };
         try {
+            if (payload.data) {
+                logger.info(`[ONMESSAGE] Se enviará campo data: ${JSON.stringify(payload.data).substring(0, 200)}...`);
+            }
             await axios.post(url, JSON.stringify(payload), config);
             logger.info(`Posted message info to ${url} | id: ${payload.id} | type: ${payload.type} | phoneNumber: ${payload.phoneNumber}`);
             updateLastOperation();

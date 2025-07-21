@@ -12,7 +12,6 @@ const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL
 function startHealthCheck() {
     setInterval(async () => {
         try {
-            logger.info(`[INTERVAL CHECK] Ejecutando health check cada ${HEALTH_CHECK_INTERVAL_SECONDS} segundos`);
             const clientReady = await isClientReady();
             if (!clientReady) {
                 failedAttempts++;
@@ -50,12 +49,13 @@ function startHealthCheck() {
                     logger.error('Error re-initializing WhatsApp client from interval:', err);
                 }
             } else {
+                // Solo log si se recupera de un estado no listo
                 if (!wasClientReady && failedAttempts > 0) {
                     logger.info(`[HEALTH] Cliente WhatsApp recuperado, reiniciando contador de fallos.`);
                 }
                 failedAttempts = 0;
                 wasClientReady = true;
-                logger.info('WhatsApp client is ready (interval check).');
+                // No log si está listo
             }
         } catch (error) {
             logger.error('Error during interval check:', error.message);
