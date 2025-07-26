@@ -77,7 +77,7 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
     const ignoredTypes = [
       'call_log', 'e2e_notification', 'revoked', 'multi_vcard',
       'order', 'product', 'list', 'buttons_response', 'list_response',
-      'poll', 'poll_response'
+      'poll', 'poll_response', 'notification_template'
     ];
     if (ignoredTypes.includes(msg.type)) {
       logger.info(`Mensaje ignorado de tipo ${msg.type} de ${msg.from}`);

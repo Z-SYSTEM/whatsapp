@@ -188,4 +188,33 @@ router.get('/test', async (req, res) => {
     }
 });
 
+// Obtener información de un contacto por phoneNumber (en body)
+router.get('/contact', async (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+        return res.status(400).json({ error: 'phoneNumber is required and must be a string' });
+    }
+    const wid = phoneNumber.endsWith('@c.us') ? phoneNumber : `${phoneNumber}@c.us`;
+    try {
+        const contact = await whatsappModule.whatsapp.getContactById(wid);
+        let profilePicUrl = null;
+        try {
+            profilePicUrl = await whatsappModule.whatsapp.getProfilePicUrl(wid);
+        } catch (e) {
+            profilePicUrl = null;
+        }
+        res.json({
+            id: contact.id._serialized,
+            name: contact.pushname || contact.name || '',
+            number: contact.number,
+            isBusiness: contact.isBusiness,
+            profilePicUrl,
+            status: contact.status || ''
+        });
+    } catch (err) {
+        logger.error(`Error fetching contact info for ${wid}: ${err.message}`);
+        res.status(404).json({ error: 'Contacto no encontrado o sin foto.' });
+    }
+});
+
 module.exports = router;
