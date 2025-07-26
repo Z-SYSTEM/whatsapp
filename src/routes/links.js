@@ -190,7 +190,7 @@ router.get('/test', async (req, res) => {
 
 // Obtener información de un contacto por phoneNumber (en body)
 router.get('/contact', async (req, res) => {
-    const { phoneNumber } = req.body;
+    const phoneNumber = req.body.phoneNumber || req.query.phoneNumber;
     if (!phoneNumber || typeof phoneNumber !== 'string') {
         return res.status(400).json({ error: 'phoneNumber is required and must be a string' });
     }
