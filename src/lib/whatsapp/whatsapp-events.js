@@ -11,7 +11,7 @@ const qrcode = require('qrcode-terminal');
 
 
 // === FUNCIONES ===
-function registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCMWrapper, logger) {
+function registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCM, logger) {
   whatsapp.on('disconnected', (reason) => {
     logger.warn(`WhatsApp client disconnected: ${reason}`);
     whatsappState.isReady = false;
@@ -88,13 +88,14 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
       let phoneNumber = match ? match[1] : null;
       let url = process.env.ONMESSAGE;
       let payload = {
-        phoneNumber: `${phoneNumber}`,
+        phoneNumber: msg.from.replace('@c.us', ''),
         type: msg.type,
         from: msg.from,
-        id: msg.id ? msg.id._serialized : undefined,
+        id: msg.id._serialized,
         timestamp: msg.timestamp,
-        body: '',
-        hasMedia: msg.hasMedia || false
+        body: msg.body,
+        hasMedia: msg.hasMedia,
+        isForwarded: msg.isForwarded || (msg.forwardingScore > 0)
       };
       switch (msg.type) {
         case 'chat':
@@ -235,13 +236,13 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
   });
 }
 
-function registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCMWrapper, sendPushNotificationFCM) {
+function registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCM) {
   whatsapp.on('qr', async qr => {
     logger.info('QR code generated for WhatsApp session');
     qrcode.generate(qr, { small: true });
     logger.info(qr);
-    if (sendPushNotificationFCMWrapper && sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-      await sendPushNotificationFCMWrapper(
+    if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+      await sendPushNotificationFCM(
         process.env.FCM_DEVICE_TOKEN,
         'WhatsApp requiere escaneo',
         'El bot está esperando que escanees el QR para autenticarse.'

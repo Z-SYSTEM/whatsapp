@@ -2,14 +2,13 @@
 // deben ser importadas desde whatsapp-utils.js. No dupliques lógica aquí.
 // Este archivo no debe contener definiciones de funciones utilitarias duplicadas.
 var axios = require('axios');
-require('dotenv').config()
+require('dotenv').config();
 const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth, MessageMedia  } = require('whatsapp-web.js');
-const { config } = require('dotenv');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const logger = require('./logger');
-const fs = require('fs');
-const { execSync } = require('child_process');
 const { logSystemContext, cleanupProcessListeners, updateLastOperation, isClientReady, handleSessionError, sendMessageWithTimeout } = require('./whatsapp/whatsapp-utils');
+const { sendPushNotificationFCM } = require('./fcm');
+const { setupProcessHandlers } = require('./whatsapp/processHandlers');
 
 const whatsapp = new Client({
   puppeteer: {
@@ -41,26 +40,7 @@ const whatsappState = { isReady: false, wasEverReady: false };
 
 
 
-const path = require('path');
-let sendPushNotificationFCM = null;
-try {
-    // Intentar requerir la función de notificación desde index.js
-    sendPushNotificationFCM = require(path.join(__dirname, '../index.js')).sendPushNotificationFCM;
-} catch (e) {
-    // Si no se puede requerir, dejarla como null
-    sendPushNotificationFCM = null;
-}
-
-// Enviar notificación FCM y loguear solo title y body
-async function sendPushNotificationFCMWrapper(token, title, body) {
-    if (!sendPushNotificationFCM) return;
-    try {
-        await sendPushNotificationFCM(token, title, body);
-        logger.info(`[FCM] Notificación enviada | title: ${title} | body: ${body}`);
-    } catch (err) {
-        logger.error(`[FCM] Error enviando notificación | title: ${title} | body: ${body} | error: ${err.stack || err}`);
-    }
-}
+// ...existing code...
 
 
 async function notifyDown(reason) {
@@ -93,10 +73,10 @@ const {
 } = require('./whatsapp/whatsapp-events');
 
 // Registrar todos los handlers de eventos
-registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCMWrapper, logger);
+registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCM, logger);
 registerWhatsappCallEvents(whatsapp, logger, updateLastOperation);
 registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation);
-registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCMWrapper, sendPushNotificationFCM);
+registerWhatsappQrEvents(whatsapp, logger, sendPushNotificationFCM, sendPushNotificationFCM);
 registerWhatsappReadyEvents(whatsapp, whatsappState, logger, updateLastOperation);
 
 
@@ -130,7 +110,7 @@ async function tryRestartWhatsApp() {
     if (restartAttempts >= 3 && !whatsappState.isReady) {
         logger.warn(`[RECOVERY] Se alcanzaron ${restartAttempts} chequeos fallidos. Enviando notificación FCM de caída.`);
         if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-            await sendPushNotificationFCMWrapper(
+            await sendPushNotificationFCM(
                 process.env.FCM_DEVICE_TOKEN,
                 'WhatsApp caído',
                 `No se pudo reiniciar el cliente WhatsApp tras ${restartAttempts} intentos.`
@@ -175,7 +155,7 @@ async function recoverySequence() {
   if (!recovered) {
     logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
     if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-      await sendPushNotificationFCMWrapper(
+      await sendPushNotificationFCM(
         process.env.FCM_DEVICE_TOKEN,
         'WhatsApp caído',
         'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
@@ -189,7 +169,6 @@ startHealthCheck({
   whatsapp,
   whatsappState,
   logger,
-  sendPushNotificationFCMWrapper,
   recoverySequence
 });
 
@@ -220,43 +199,7 @@ setInterval(() => {
     }
 }, 30 * 60 * 1000);
 
-// Cleanup y logging de proceso al cerrar
-cleanupProcessListeners();
-process.on('beforeExit', async () => {
-    logSystemContext('beforeExit');
-    logger.info('Process before exit, cleaning up...');
-    try {
-        await whatsapp.destroy();
-        execSync('pkill -f chrome || true', { stdio: 'ignore' });
-        execSync('pkill -f puppeteer || true', { stdio: 'ignore' });
-    } catch (e) {
-        logger.error('Error in cleanup:', e);
-    }
-});
-process.on('SIGINT', () => {
-    logSystemContext('SIGINT');
-    logger.warn('Process received SIGINT');
-});
-process.on('SIGTERM', () => {
-    logSystemContext('SIGTERM');
-    logger.warn('Process received SIGTERM');
-});
-process.on('SIGHUP', () => {
-    logSystemContext('SIGHUP');
-    logger.warn('Process received SIGHUP');
-});
-process.on('exit', (code) => {
-    logSystemContext(`exit code ${code}`);
-    logger.warn(`Process exit with code ${code}`);
-});
-process.on('uncaughtException', (err) => {
-    logSystemContext('uncaughtException');
-    logger.error(`Uncaught Exception: ${err.stack || err}`);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    logSystemContext('unhandledRejection');
-    logger.error(`Unhandled Rejection: ${reason}`);
-});
+setupProcessHandlers(whatsapp);
 
 module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence, sendPushNotificationFCM };
 

@@ -15,10 +15,10 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.5.0",
     "firebase-admin": "^13.4.0",
+    "form-data": "^4.0.4",
     "puppeteer": "^24.10.2",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.23.0",
-    "winston": "^3.17.0",
-    "yarn": "^1.22.22"
+    "winston": "^3.17.0"
   }
 }

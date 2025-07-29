@@ -39,7 +39,6 @@ whatsapp.initialize();
 
 
 app.listen(puerto, () => {
-    console.log(`Server on port ${puerto}`);
     logger.info(`Server started on port ${puerto}`);
     startMemoryMonitor();
     startHealthCheck({
