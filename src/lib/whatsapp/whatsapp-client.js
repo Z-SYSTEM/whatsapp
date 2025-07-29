@@ -3,6 +3,11 @@ const qrcode = require('qrcode-terminal');
 const logger = require('../logger');
 require('dotenv').config();
 
+const sessionBackup = require('./sessionBackup');
+
+// Iniciar backup/restauración modularizado
+sessionBackup.startSessionBackup(logger);
+
 const whatsapp = new Client({
   puppeteer: {
     ...(process.platform === 'linux' && {
