@@ -3,57 +3,57 @@ let wasClientReady = true;
 let restartCount = 0; // Contador de reinicios
 
 
-// Modularización
-const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');
-const { startMemoryMonitor } = require('./lib/memoryMonitor');
-const { startHealthCheck } = require('./lib/health');
-
-// El token del dispositivo receptor debe venir de la variable de entorno FCM_DEVICE_TOKEN
-// El nombre de la instancia del bot debe venir de la variable de entorno BOT_NAME
-const express = require('express');
-const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
-const logger = require('./lib/logger');
-const rateLimit = require('express-rate-limit');
-const app = express();
-
-if (!process.env.PORT || !process.env.TOKENACCESS) {
-    logger.error('Faltan variables de entorno requeridas (PORT, TOKENACCESS)');
+whatsapp.initialize().then(() => {
+    app.listen(puerto, () => {
+        logger.info(`Server started on port ${puerto}`);
+        startMemoryMonitor();
+        startHealthCheck({
+            isClientReady,
+            whatsapp,
+            whatsappState,
+            logger,
+            sendPushNotificationFCMWrapper: sendPushNotificationFCM,
+            recoverySequence: async () => {
+                let recovered = false;
+                for (let i = 1; i <= 3; i++) {
+                    if (await isClientReady(whatsapp, whatsappState)) {
+                        logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
+                        recovered = true;
+                        break;
+                    }
+                    logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
+                    try {
+                        await whatsapp.initialize();
+                        await new Promise(res => setTimeout(res, 2000));
+                        if (await isClientReady(whatsapp, whatsappState)) {
+                            logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
+                            recovered = true;
+                            break;
+                        }
+                    } catch (err) {
+                        logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+                    }
+                    if (i < 3) {
+                        await new Promise(res => setTimeout(res, 10000));
+                    }
+                }
+                if (!recovered) {
+                    logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
+                    if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+                        await sendPushNotificationFCM(
+                            process.env.FCM_DEVICE_TOKEN,
+                            'WhatsApp caído',
+                            'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
+                        );
+                    }
+                }
+            }
+        });
+    });
+}).catch((err) => {
+    logger.error('Error inicializando WhatsApp:', err && (err.stack || err.message) ? (err.stack || err.message) : JSON.stringify(err));
     process.exit(1);
-}
-
-// Puerto y otros parámetros importantes se configuran por variables de entorno
-const puerto = parseInt(process.env.PORT);
-const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL_SECONDS, 10) || 30;
-
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use('/api/send', rateLimit({
-    windowMs: 60 * 1000, // 1 minuto
-    max: 10 // máximo 10 requests por minuto
-}));
-
-// Rutas
-app.use('/api', require('./routes/links'));
-
-whatsapp.initialize();
-
-
-app.listen(puerto, () => {
-    logger.info(`Server started on port ${puerto}`);
-    startMemoryMonitor();
-    startHealthCheck({
-        isClientReady,
-        whatsapp,
-        whatsappState,
-        logger,
-        sendPushNotificationFCMWrapper: sendPushNotificationFCM,
-        recoverySequence: async () => {
-            let recovered = false;
-            for (let i = 1; i <= 3; i++) {
-                if (await isClientReady(whatsapp, whatsappState)) {
-                    logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
-                    recovered = true;
-                    break;
+});
                 }
                 logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
                 try {
