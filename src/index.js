@@ -79,7 +79,12 @@ whatsapp.initialize()
         startServerAndHealthCheck();
     })
     .catch((err) => {
-        logger.error('Error inicializando WhatsApp:', err && (err.stack || err.message) ? (err.stack || err.message) : JSON.stringify(err));
+        logger.error('Error inicializando WhatsApp:', {
+            message: err && err.message,
+            stack: err && err.stack,
+            full: err,
+            json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
+        });
         process.exit(1);
     });
 
@@ -87,7 +92,12 @@ whatsapp.initialize()
 
 
 process.on('uncaughtException', async (err) => {
-    logger.error('Uncaught Exception:', err);
+    logger.error('Uncaught Exception:', {
+        message: err && err.message,
+        stack: err && err.stack,
+        full: err,
+        json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
+    });
     logger.error(`[RECOVERY] Stack trace uncaughtException: ${err && err.stack}`);
     let errorType = 'unknown';
     if (err && err.message) {

@@ -105,7 +105,12 @@ async function tryRestartWhatsApp() {
         await whatsapp.initialize();
         logger.info(`[RECOVERY] Intento de reinicio ejecutado (#${restartAttempts})`);
     } catch (err) {
-        logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+        logger.error('[RECOVERY] Error al intentar reiniciar WhatsApp:', {
+            message: err && err.message,
+            stack: err && err.stack,
+            full: err,
+            json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
+        });
     }
     if (restartAttempts >= 3 && !whatsappState.isReady) {
         logger.warn(`[RECOVERY] Se alcanzaron ${restartAttempts} chequeos fallidos. Enviando notificación FCM de caída.`);
@@ -146,7 +151,12 @@ async function recoverySequence() {
         break;
       }
     } catch (err) {
-      logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
+      logger.error('[RECOVERY] Error al intentar reiniciar WhatsApp:', {
+        message: err && err.message,
+        stack: err && err.stack,
+        full: err,
+        json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
+      });
     }
     if (i < 3) {
       await new Promise(res => setTimeout(res, 10000));
