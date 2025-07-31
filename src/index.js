@@ -9,9 +9,14 @@ const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL
 
 
 
+
+const express = require('./lib/express');
+const app = express();
 const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
 const logger = require('./lib/logger');
 const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');
+const { startMemoryMonitor } = require('./lib/memoryMonitor');
+const { startHealthCheck } = require('./lib/health');
 
 
 
