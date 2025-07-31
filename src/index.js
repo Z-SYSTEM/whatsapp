@@ -1,7 +1,17 @@
+require('dotenv').config();
+
 // Flag para controlar notificaciones de estado
 let wasClientReady = true;
 let restartCount = 0; // Contador de reinicios
 
+const puerto = parseInt(process.env.PORT, 10) || 3000;
+const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL_SECONDS, 10) || 30;
+
+
+
+const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
+const logger = require('./lib/logger');
+const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');
 
 whatsapp.initialize().then(() => {
     app.listen(puerto, () => {
@@ -54,36 +64,7 @@ whatsapp.initialize().then(() => {
     logger.error('Error inicializando WhatsApp:', err && (err.stack || err.message) ? (err.stack || err.message) : JSON.stringify(err));
     process.exit(1);
 });
-                }
-                logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
-                try {
-                    await whatsapp.initialize();
-                    await new Promise(res => setTimeout(res, 2000));
-                    if (await isClientReady(whatsapp, whatsappState)) {
-                        logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
-                        recovered = true;
-                        break;
-                    }
-                } catch (err) {
-                    logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
-                }
-                if (i < 3) {
-                    await new Promise(res => setTimeout(res, 10000));
-                }
-            }
-            if (!recovered) {
-                logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
-                if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-                    await sendPushNotificationFCM(
-                        process.env.FCM_DEVICE_TOKEN,
-                        'WhatsApp caído',
-                        'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
-                    );
-                }
-            }
-        }
-    });
-});
+
 
 
 
@@ -229,8 +210,6 @@ process.on('SIGTERM', async () => {
     }
     process.exit(0);
 });
-
-// ...existing code...
 
 // --- FIN DE COMENTARIOS IMPORTANTES ---
 logger.info('Iniciando servidor WhatsApp API...');
