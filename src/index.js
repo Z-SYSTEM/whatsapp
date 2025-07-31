@@ -1,10 +1,83 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const http = require('http');
+const { execSync } = require('child_process');
+
+const BOT_NAME = process.env.BOT_NAME || 'default-bot';
+const puerto = parseInt(process.env.PORT, 10) || 3000;
+const SESSION_PATH = process.env.SESSION_PATH || `/root/app/${BOT_NAME}/.wwebjs_auth/session-${BOT_NAME}`;
+const SINGLETON_LOCK = `${SESSION_PATH}/SingletonLock`;
+const HEALTHCHECK_URL = `http://localhost:${puerto}/api/test`;
+
+console.info('[BOOT] Configuración leída:');
+console.info(`[BOOT] BOT_NAME=${BOT_NAME}, puerto=${puerto}, SESSION_PATH=${SESSION_PATH}`);
+
+async function preStartupCheck() {
+    // 1. Health check HTTP
+    console.info('[BOOT] Verificando si hay otra instancia activa...');
+    let botResponding = false;
+    try {
+        await new Promise((resolve, reject) => {
+            const req = http.get(HEALTHCHECK_URL, res => {
+                if (res.statusCode === 200) botResponding = true;
+                resolve();
+            });
+            req.on('error', resolve); // Si falla, asumimos que no responde
+            req.setTimeout(2000, () => { req.abort(); resolve(); });
+        });
+    } catch (e) { /* Ignorar */ }
+
+    if (botResponding) {
+        // Ya hay un bot respondiendo en este puerto
+        console.error('[BOOT] Hay respuesta de otra instancia, me mato.');
+        process.exit(1);
+    } else {
+        console.info('[BOOT] No hay otra instancia, arranco.');
+    }
+
+    // 2. Verificar SingletonLock
+    if (fs.existsSync(SINGLETON_LOCK)) {
+        // Buscar procesos chrome/chromium con --user-data-dir=SESSION_PATH
+        let psOutput = '';
+        let killed = 0;
+        try {
+            psOutput = execSync(`ps aux | grep '[c]hrome'`).toString();
+        } catch (e) { /* Puede no haber procesos */ }
+        if (psOutput) {
+            const lines = psOutput.split('\n');
+            for (const line of lines) {
+                if (line.includes(`--user-data-dir=${SESSION_PATH}`)) {
+                    const parts = line.trim().split(/\s+/);
+                    const pid = parts[1];
+                    if (pid && !isNaN(pid)) {
+                        try {
+                            process.kill(pid, 'SIGKILL');
+                            killed++;
+                        } catch (e) { /* Puede que ya esté muerto */ }
+                    }
+                }
+            }
+        }
+        if (killed > 0) {
+            console.warn(`[PRE-STARTUP] Se mataron ${killed} procesos Chrome/Chromium de la sesión ${SESSION_PATH}.`);
+        } else {
+            console.warn(`[PRE-STARTUP] SingletonLock presente pero no se encontraron procesos Chrome/Chromium de la sesión. Borrando lock...`);
+        }
+        fs.unlinkSync(SINGLETON_LOCK);
+    }
+}
+
+// Ejecutar el pre-check antes de todo
+(async () => {
+    await preStartupCheck();
+})();
+
 // Flag para controlar notificaciones de estado
 let wasClientReady = true;
 let restartCount = 0; // Contador de reinicios
 
-const puerto = parseInt(process.env.PORT, 10) || 3000;
+
 const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL_SECONDS, 10) || 30;
 
 
@@ -12,6 +85,8 @@ const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL
 
 const express = require('./lib/express');
 const app = express();
+const linksRouter = require('./routes/links');
+app.use('/api', linksRouter);
 const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
 const logger = require('./lib/logger');
 const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');

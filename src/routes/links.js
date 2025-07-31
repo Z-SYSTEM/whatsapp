@@ -7,8 +7,19 @@ try {
 } catch (e) {
     recoverySequence = null;
 }
+
+
 const logger = require('../lib/logger');
+const express = require('express');
 const router = Router();
+
+// Middleware para parsear JSON en el body
+router.use(express.json());
+
+// Healthcheck simple para preStartupCheck y monitoreo
+router.get('/test', (req, res) => {
+    res.status(200).json({ status: 'ok', whatsapp: 'ready' });
+});
 
 router.post('/send', async (req, res) => {
     // Eliminado log de IP para /send por solicitud
@@ -35,7 +46,8 @@ router.post('/send', async (req, res) => {
         return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
     }
 
-    const { phoneNumber, message, imageUrl, imageUrls, pdfUrl } = req.body;
+    // Proteger destructuring si req.body es undefined
+    const { phoneNumber, message, imageUrl, imageUrls, pdfUrl } = req.body || {};
 
     // Validación 1: phoneNumber es obligatorio
     if (!phoneNumber) {
@@ -190,7 +202,15 @@ router.get('/test', async (req, res) => {
 
 // Obtener información de un contacto por phoneNumber (en body)
 router.get('/contact', async (req, res) => {
-    const phoneNumber = req.body.phoneNumber || req.query.phoneNumber;
+    // Permitir phoneNumber por query, body o params
+    let phoneNumber = undefined;
+    if (req.query && req.query.phoneNumber) {
+        phoneNumber = req.query.phoneNumber;
+    } else if (req.body && req.body.phoneNumber) {
+        phoneNumber = req.body.phoneNumber;
+    } else if (req.params && req.params.phoneNumber) {
+        phoneNumber = req.params.phoneNumber;
+    }
     if (!phoneNumber || typeof phoneNumber !== 'string') {
         return res.status(400).json({ error: 'phoneNumber is required and must be a string' });
     }
