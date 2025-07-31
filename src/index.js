@@ -14,66 +14,69 @@ const logger = require('./lib/logger');
 const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');
 
 
-whatsapp.initialize().then(() => {
+
+const startServerAndHealthCheck = async () => {
+    // Esperar a que el cliente esté listo antes de iniciar el health check y el servidor
+    while (!(await isClientReady(whatsapp, whatsappState))) {
+        await new Promise(res => setTimeout(res, 5000));
+    }
+    logger.info('[INIT] Cliente WhatsApp listo, iniciando health check y servidor.');
     app.listen(puerto, () => {
         logger.info(`Server started on port ${puerto}`);
         startMemoryMonitor();
-        // Esperar a que el cliente esté listo antes de iniciar el health check
-        const waitForReady = async () => {
-            while (!(await isClientReady(whatsapp, whatsappState))) {
-                logger.info('[INIT] Esperando a que el cliente WhatsApp esté listo para iniciar health check...');
-                await new Promise(res => setTimeout(res, 5000));
-            }
-            logger.info('[INIT] Cliente WhatsApp listo, iniciando health check.');
-            startHealthCheck({
-                isClientReady,
-                whatsapp,
-                whatsappState,
-                logger,
-                sendPushNotificationFCMWrapper: sendPushNotificationFCM,
-                recoverySequence: async () => {
-                    let recovered = false;
-                    for (let i = 1; i <= 3; i++) {
+        startHealthCheck({
+            isClientReady,
+            whatsapp,
+            whatsappState,
+            logger,
+            sendPushNotificationFCMWrapper: sendPushNotificationFCM,
+            recoverySequence: async () => {
+                let recovered = false;
+                for (let i = 1; i <= 3; i++) {
+                    if (await isClientReady(whatsapp, whatsappState)) {
+                        logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
+                        recovered = true;
+                        break;
+                    }
+                    logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
+                    try {
+                        await whatsapp.initialize();
+                        await new Promise(res => setTimeout(res, 2000));
                         if (await isClientReady(whatsapp, whatsappState)) {
-                            logger.info(`[RECOVERY] Cliente WhatsApp ya está listo antes del intento #${i}, abortando recovery.`);
+                            logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
                             recovered = true;
                             break;
                         }
-                        logger.warn(`[RECOVERY] Intento de reinicio WhatsApp #${i}`);
-                        try {
-                            await whatsapp.initialize();
-                            await new Promise(res => setTimeout(res, 2000));
-                            if (await isClientReady(whatsapp, whatsappState)) {
-                                logger.info(`[RECOVERY] Cliente WhatsApp recuperado en el intento #${i}`);
-                                recovered = true;
-                                break;
-                            }
-                        } catch (err) {
-                            logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
-                        }
-                        if (i < 3) {
-                            await new Promise(res => setTimeout(res, 10000));
-                        }
+                    } catch (err) {
+                        logger.error(`[RECOVERY] Error al intentar reiniciar WhatsApp: ${err && err.message}`);
                     }
-                    if (!recovered) {
-                        logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
-                        if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
-                            await sendPushNotificationFCM(
-                                process.env.FCM_DEVICE_TOKEN,
-                                'WhatsApp caído',
-                                'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
-                            );
-                        }
+                    if (i < 3) {
+                        await new Promise(res => setTimeout(res, 10000));
                     }
                 }
-            });
-        };
-        waitForReady();
+                if (!recovered) {
+                    logger.warn('[RECOVERY] No se pudo recuperar WhatsApp tras 3 intentos. Enviando notificación FCM.');
+                    if (sendPushNotificationFCM && process.env.FCM_DEVICE_TOKEN) {
+                        await sendPushNotificationFCM(
+                            process.env.FCM_DEVICE_TOKEN,
+                            'WhatsApp caído',
+                            'No se pudo reiniciar el cliente WhatsApp tras 3 intentos.'
+                        );
+                    }
+                }
+            }
+        });
     });
-}).catch((err) => {
-    logger.error('Error inicializando WhatsApp:', err && (err.stack || err.message) ? (err.stack || err.message) : JSON.stringify(err));
-    process.exit(1);
-});
+};
+
+whatsapp.initialize()
+    .then(() => {
+        startServerAndHealthCheck();
+    })
+    .catch((err) => {
+        logger.error('Error inicializando WhatsApp:', err && (err.stack || err.message) ? (err.stack || err.message) : JSON.stringify(err));
+        process.exit(1);
+    });
 
 
 
