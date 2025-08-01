@@ -15,35 +15,50 @@ console.info(`[BOOT] BOT_NAME=${BOT_NAME}, puerto=${puerto}, SESSION_PATH=${SESS
 
 async function preStartupCheck() {
     // 1. Health check HTTP
-    console.info('[BOOT] Verificando si hay otra instancia activa...');
+    console.info('[BOOT] [STEP 1] Verificando si hay otra instancia activa...');
     let botResponding = false;
     try {
+        console.info(`[BOOT] [STEP 1.1] Haciendo GET a ${HEALTHCHECK_URL}`);
         await new Promise((resolve, reject) => {
             const req = http.get(HEALTHCHECK_URL, res => {
+                console.info(`[BOOT] [STEP 1.2] Respuesta HTTP status: ${res.statusCode}`);
                 if (res.statusCode === 200) botResponding = true;
                 resolve();
             });
-            req.on('error', resolve); // Si falla, asumimos que no responde
-            req.setTimeout(2000, () => { req.abort(); resolve(); });
+            req.on('error', (err) => {
+                console.info(`[BOOT] [STEP 1.3] Error al hacer GET: ${err && err.message}`);
+                resolve();
+            }); // Si falla, asumimos que no responde
+            req.setTimeout(2000, () => { 
+                console.info('[BOOT] [STEP 1.4] Timeout en GET, abortando');
+                req.abort(); 
+                resolve(); 
+            });
         });
-    } catch (e) { /* Ignorar */ }
+    } catch (e) { 
+        console.info(`[BOOT] [STEP 1.5] Excepción en healthcheck: ${e && e.message}`);
+    }
 
     if (botResponding) {
         // Ya hay un bot respondiendo en este puerto
-        console.error('[BOOT] Hay respuesta de otra instancia, me mato.');
+        console.error('[BOOT] [STEP 1.6] Hay respuesta de otra instancia, me mato.');
         process.exit(1);
     } else {
-        console.info('[BOOT] No hay otra instancia, arranco.');
+        console.info('[BOOT] [STEP 1.7] No hay otra instancia, arranco.');
     }
 
     // 2. Verificar SingletonLock
+    console.info('[BOOT] [STEP 2] Verificando SingletonLock...');
     if (fs.existsSync(SINGLETON_LOCK)) {
-        // Buscar procesos chrome/chromium con --user-data-dir=SESSION_PATH
+        console.info('[BOOT] [STEP 2.1] SingletonLock encontrado, buscando procesos Chrome/Chromium...');
         let psOutput = '';
         let killed = 0;
         try {
             psOutput = execSync(`ps aux | grep '[c]hrome'`).toString();
-        } catch (e) { /* Puede no haber procesos */ }
+            console.info('[BOOT] [STEP 2.2] Salida de ps aux obtenida.');
+        } catch (e) { 
+            console.info('[BOOT] [STEP 2.3] No se encontraron procesos Chrome/Chromium.');
+        }
         if (psOutput) {
             const lines = psOutput.split('\n');
             for (const line of lines) {
@@ -54,7 +69,10 @@ async function preStartupCheck() {
                         try {
                             process.kill(pid, 'SIGKILL');
                             killed++;
-                        } catch (e) { /* Puede que ya esté muerto */ }
+                            console.info(`[BOOT] [STEP 2.4] Proceso Chrome/Chromium con PID ${pid} matado.`);
+                        } catch (e) { 
+                            console.info(`[BOOT] [STEP 2.5] Error al matar PID ${pid}: ${e && e.message}`);
+                        }
                     }
                 }
             }
@@ -65,15 +83,23 @@ async function preStartupCheck() {
             console.warn(`[PRE-STARTUP] SingletonLock presente pero no se encontraron procesos Chrome/Chromium de la sesión. Borrando lock...`);
         }
         fs.unlinkSync(SINGLETON_LOCK);
+        console.info('[BOOT] [STEP 2.6] SingletonLock eliminado.');
+    } else {
+        console.info('[BOOT] [STEP 2.7] No existe SingletonLock, continuando.');
     }
 }
 
 
 // Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor
+
+// Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor, con logs detallados
 (async () => {
+    console.info('[BOOT] [STEP 3] Iniciando preStartupCheck...');
     await preStartupCheck();
+    console.info('[BOOT] [STEP 4] preStartupCheck finalizado. Iniciando inicialización de WhatsApp...');
     whatsapp.initialize()
         .then(() => {
+            console.info('[BOOT] [STEP 5] WhatsApp inicializado. Iniciando servidor y healthcheck...');
             startServerAndHealthCheck();
         })
         .catch((err) => {
@@ -111,7 +137,10 @@ const { startHealthCheck } = require('./lib/health');
 
 const startServerAndHealthCheck = async () => {
     // Esperar a que el cliente esté listo antes de iniciar el health check y el servidor
+    let waitCount = 0;
     while (!(await isClientReady(whatsapp, whatsappState))) {
+        waitCount++;
+        logger.info(`[INIT] Esperando que el cliente WhatsApp esté listo... (${waitCount})`);
         await new Promise(res => setTimeout(res, 5000));
     }
     logger.info('[INIT] Cliente WhatsApp listo, iniciando health check y servidor.');
