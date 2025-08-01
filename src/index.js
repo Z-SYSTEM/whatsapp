@@ -68,9 +68,23 @@ async function preStartupCheck() {
     }
 }
 
-// Ejecutar el pre-check antes de todo
+
+// Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor
 (async () => {
     await preStartupCheck();
+    whatsapp.initialize()
+        .then(() => {
+            startServerAndHealthCheck();
+        })
+        .catch((err) => {
+            logger.error('Error inicializando WhatsApp:', {
+                message: err && err.message,
+                stack: err && err.stack,
+                full: err,
+                json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
+            });
+            process.exit(1);
+        });
 })();
 
 // Flag para controlar notificaciones de estado
@@ -149,19 +163,7 @@ const startServerAndHealthCheck = async () => {
     });
 };
 
-whatsapp.initialize()
-    .then(() => {
-        startServerAndHealthCheck();
-    })
-    .catch((err) => {
-        logger.error('Error inicializando WhatsApp:', {
-            message: err && err.message,
-            stack: err && err.stack,
-            full: err,
-            json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
-        });
-        process.exit(1);
-    });
+
 
 
 
@@ -315,5 +317,5 @@ process.on('SIGTERM', async () => {
 });
 
 // --- FIN DE COMENTARIOS IMPORTANTES ---
-logger.info('Iniciando servidor WhatsApp API...');
-logger.info(`Configuración: puerto=${puerto}, intervalo chequeo=${HEALTH_CHECK_INTERVAL_SECONDS} seg`);
+
+
