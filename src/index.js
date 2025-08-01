@@ -93,16 +93,23 @@ async function preStartupCheck() {
 // Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor
 
 // Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor, con logs detallados
+
 (async () => {
     console.info('[BOOT] [STEP 3] Iniciando preStartupCheck...');
     await preStartupCheck();
     console.info('[BOOT] [STEP 4] preStartupCheck finalizado. Iniciando inicialización de WhatsApp...');
+    console.info('[BOOT] [STEP 4.1] Llamando whatsapp.initialize()...');
+    const initTimeout = setTimeout(() => {
+        console.error('[BOOT] [ERROR] whatsapp.initialize() está tardando demasiado (60s). Puede estar colgado.');
+    }, 60000);
     whatsapp.initialize()
         .then(() => {
+            clearTimeout(initTimeout);
             console.info('[BOOT] [STEP 5] WhatsApp inicializado. Iniciando servidor y healthcheck...');
             startServerAndHealthCheck();
         })
         .catch((err) => {
+            clearTimeout(initTimeout);
             logger.error('Error inicializando WhatsApp:', {
                 message: err && err.message,
                 stack: err && err.stack,
