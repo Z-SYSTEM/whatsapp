@@ -189,7 +189,17 @@ setInterval(() => {
 
 setupProcessHandlers(whatsapp);
 
-module.exports = { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence, sendPushNotificationFCM };
+module.exports = { 
+    whatsapp, 
+    MessageMedia, 
+    whatsappState, 
+    isClientReady, 
+    handleSessionError, 
+    sendMessageWithTimeout, 
+    updateLastOperation, 
+    recoverySequence, 
+    sendPushNotificationFCM 
+};
 
 
 
