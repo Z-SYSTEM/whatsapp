@@ -1,126 +1,46 @@
 // Habilitar logs internos de whatsapp y puppeteer para debug
-// process.env.DEBUG = 'whatsapp*,puppeteer:*';
+// process.env.DEBUG = 'whatsapp*';
 process.env.DEBUG = '';
 require('dotenv').config();
 
-const fs = require('fs');
-const http = require('http');
-const { execSync } = require('child_process');
+const { preStartupCheck } = require('./lib/core/startup');
 
 const BOT_NAME = process.env.BOT_NAME || 'default-bot';
 const puerto = parseInt(process.env.PORT, 10) || 3000;
-const SESSION_PATH = process.env.SESSION_PATH || `/root/app/${BOT_NAME}/.wwebjs_auth/session-${BOT_NAME}`;
-const SINGLETON_LOCK = `${SESSION_PATH}/SingletonLock`;
+const SESSION_PATH = process.env.SESSION_PATH || `./.wwebjs_auth/session-${BOT_NAME}`;
 const HEALTHCHECK_URL = `http://localhost:${puerto}/api/test`;
 
 console.info('[BOOT] Configuración leída:');
 console.info(`[BOOT] BOT_NAME=${BOT_NAME}, puerto=${puerto}, SESSION_PATH=${SESSION_PATH}`);
 
-async function preStartupCheck() {
-    // 1. Health check HTTP
-    console.info('[BOOT] [STEP 1] Verificando si hay otra instancia activa...');
-    let botResponding = false;
-    try {
-        console.info(`[BOOT] [STEP 1.1] Haciendo GET a ${HEALTHCHECK_URL}`);
-        await new Promise((resolve, reject) => {
-            const req = http.get(HEALTHCHECK_URL, res => {
-                console.info(`[BOOT] [STEP 1.2] Respuesta HTTP status: ${res.statusCode}`);
-                if (res.statusCode === 200) botResponding = true;
-                resolve();
-            });
-            req.on('error', (err) => {
-                console.info(`[BOOT] [STEP 1.3] Error al hacer GET: ${err && err.message}`);
-                resolve();
-            }); // Si falla, asumimos que no responde
-            req.setTimeout(2000, () => { 
-                console.info('[BOOT] [STEP 1.4] Timeout en GET, abortando');
-                req.abort(); 
-                resolve(); 
-            });
-        });
-    } catch (e) { 
-        console.info(`[BOOT] [STEP 1.5] Excepción en healthcheck: ${e && e.message}`);
-    }
-
-    if (botResponding) {
-        // Ya hay un bot respondiendo en este puerto
-        console.error('[BOOT] [STEP 1.6] Hay respuesta de otra instancia, me mato.');
-        process.exit(1);
-    } else {
-        console.info('[BOOT] [STEP 1.7] No hay otra instancia, arranco.');
-    }
-
-    // 2. Verificar SingletonLock
-    console.info('[BOOT] [STEP 2] Verificando SingletonLock...');
-    if (fs.existsSync(SINGLETON_LOCK)) {
-        console.info('[BOOT] [STEP 2.1] SingletonLock encontrado, buscando procesos Chrome/Chromium...');
-        let psOutput = '';
-        let killed = 0;
-        try {
-            psOutput = execSync(`ps aux | grep '[c]hrome'`).toString();
-            console.info('[BOOT] [STEP 2.2] Salida de ps aux obtenida.');
-        } catch (e) { 
-            console.info('[BOOT] [STEP 2.3] No se encontraron procesos Chrome/Chromium.');
-        }
-        if (psOutput) {
-            const lines = psOutput.split('\n');
-            for (const line of lines) {
-                if (line.includes(`--user-data-dir=${SESSION_PATH}`)) {
-                    const parts = line.trim().split(/\s+/);
-                    const pid = parts[1];
-                    if (pid && !isNaN(pid)) {
-                        try {
-                            process.kill(pid, 'SIGKILL');
-                            killed++;
-                            console.info(`[BOOT] [STEP 2.4] Proceso Chrome/Chromium con PID ${pid} matado.`);
-                        } catch (e) { 
-                            console.info(`[BOOT] [STEP 2.5] Error al matar PID ${pid}: ${e && e.message}`);
-                        }
-                    }
-                }
-            }
-        }
-        if (killed > 0) {
-            console.warn(`[PRE-STARTUP] Se mataron ${killed} procesos Chrome/Chromium de la sesión ${SESSION_PATH}.`);
-        } else {
-            console.warn(`[PRE-STARTUP] SingletonLock presente pero no se encontraron procesos Chrome/Chromium de la sesión. Borrando lock...`);
-        }
-        fs.unlinkSync(SINGLETON_LOCK);
-        console.info('[BOOT] [STEP 2.6] SingletonLock eliminado.');
-    } else {
-        console.info('[BOOT] [STEP 2.7] No existe SingletonLock, continuando.');
-    }
-}
-
-
-// Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor
-
 // Ejecutar el pre-check antes de todo y luego inicializar WhatsApp y el servidor, con logs detallados
 
 (async () => {
     console.info('[BOOT] [STEP 3] Iniciando preStartupCheck...');
-    await preStartupCheck();
+    await preStartupCheck(BOT_NAME, puerto, SESSION_PATH, HEALTHCHECK_URL);
     console.info('[BOOT] [STEP 4] preStartupCheck finalizado. Iniciando inicialización de WhatsApp...');
     console.info('[BOOT] [STEP 4.1] Llamando whatsapp.initialize()...');
-    const initTimeout = setTimeout(() => {
-        console.error('[BOOT] [ERROR] whatsapp.initialize() está tardando demasiado (60s). Puede estar colgado.');
-    }, 60000);
-    whatsapp.initialize()
-        .then(() => {
-            clearTimeout(initTimeout);
-            console.info('[BOOT] [STEP 5] WhatsApp inicializado. Iniciando servidor y healthcheck...');
-            startServerAndHealthCheck();
-        })
-        .catch((err) => {
-            clearTimeout(initTimeout);
-            logger.error('Error inicializando WhatsApp:', {
-                message: err && err.message,
-                stack: err && err.stack,
-                full: err,
-                json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
-            });
-            process.exit(1);
+    
+    // Agregar timeout manual para debug
+    const initPromise = whatsapp.initialize();
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Manual timeout after 30 seconds')), 30000);
+    });
+    
+    try {
+        await Promise.race([initPromise, timeoutPromise]);
+        console.info('[BOOT] [STEP 5] WhatsApp inicializado exitosamente.');
+        startServerAndHealthCheck();
+    } catch (err) {
+        console.error('[BOOT] [ERROR] Error o timeout en inicialización:', err.message);
+        logger.error('Error inicializando WhatsApp:', {
+            message: err && err.message,
+            stack: err && err.stack,
+            full: err,
+            json: (() => { try { return JSON.stringify(err); } catch (e) { return 'No se pudo serializar el error'; } })()
         });
+        process.exit(1);
+    }
 })();
 
 // Flag para controlar notificaciones de estado
@@ -133,15 +53,15 @@ const HEALTH_CHECK_INTERVAL_SECONDS = parseInt(process.env.HEALTH_CHECK_INTERVAL
 
 
 
-const express = require('./lib/express');
+const express = require('./lib/services/express');
 const app = express();
 const linksRouter = require('./routes/links');
 app.use('/api', linksRouter);
-const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp');
-const logger = require('./lib/logger');
-const { sendPushNotificationFCM, canSendPush } = require('./lib/fcm');
-const { startMemoryMonitor } = require('./lib/memoryMonitor');
-const { startHealthCheck } = require('./lib/health');
+const { whatsapp, whatsappState, isClientReady } = require('./lib/whatsapp/whatsapp');
+const logger = require('./lib/core/logger');
+const { sendPushNotificationFCM, canSendPush } = require('./lib/services/fcm');
+const { startMemoryMonitor } = require('./lib/core/memoryMonitor');
+const { startHealthCheck } = require('./lib/core/health');
 
 
 

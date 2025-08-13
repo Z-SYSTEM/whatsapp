@@ -1,5 +1,5 @@
-const logger = require('../logger');
-const { whatsappState } = require('./whatsapp-client');
+const logger = require('../core/logger');
+const { whatsappState } = require('../whatsapp');
 
 async function performHealthCheck(whatsapp) {
     try {

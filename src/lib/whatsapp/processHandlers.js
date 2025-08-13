@@ -1,4 +1,4 @@
-const logger = require('../logger');
+const logger = require('../core/logger');
 const { logSystemContext, cleanupProcessListeners } = require('./whatsapp-utils');
 const { execSync } = require('child_process');
 

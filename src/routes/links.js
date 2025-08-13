@@ -1,6 +1,6 @@
 require('dotenv').config()
 const {Router} = require('express');
-const whatsappModule = require('../lib/whatsapp');
+const whatsappModule = require('../lib/whatsapp/whatsapp');
 let recoverySequence;
 try {
     recoverySequence = whatsappModule.recoverySequence;
@@ -9,7 +9,7 @@ try {
 }
 
 
-const logger = require('../lib/logger');
+const logger = require('../lib/core/logger');
 const express = require('express');
 const router = Router();
 

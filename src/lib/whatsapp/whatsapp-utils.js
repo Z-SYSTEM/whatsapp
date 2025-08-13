@@ -1,4 +1,4 @@
-const logger = require('../logger');
+const logger = require('../core/logger');
 
 function logSystemContext(motivo) {
     const mem = process.memoryUsage();
@@ -39,4 +39,48 @@ async function isClientReady(whatsapp, whatsappState) {
     }
 }
 
-module.exports = { logSystemContext, cleanupProcessListeners, updateLastOperation, isClientReady };
+// Función para manejar errores de sesión
+function handleSessionError(error) {
+    if (!error || !error.message) return false;
+    
+    const sessionErrors = [
+        'Session closed',
+        'Protocol error',
+        'Target closed',
+        'Navigation failed',
+        'WebSocket connection',
+        'Execution context was destroyed'
+    ];
+    
+    return sessionErrors.some(errorPattern => 
+        error.message.includes(errorPattern)
+    );
+}
+
+// Función para enviar mensajes con timeout
+async function sendMessageWithTimeout(whatsapp, chatId, content, options = {}, timeoutMs = 30000) {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error('Message send timeout'));
+        }, timeoutMs);
+        
+        whatsapp.sendMessage(chatId, content, options)
+            .then(result => {
+                clearTimeout(timeout);
+                resolve(result);
+            })
+            .catch(error => {
+                clearTimeout(timeout);
+                reject(error);
+            });
+    });
+}
+
+module.exports = { 
+    logSystemContext, 
+    cleanupProcessListeners, 
+    updateLastOperation, 
+    isClientReady,
+    handleSessionError,
+    sendMessageWithTimeout
+};

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const logger = require('../lib/logger');
+const logger = require('../core/logger');
 
 
 let admin = null;

@@ -1,8 +1,9 @@
 // === REQUIRES Y CONSTANTES ===
 const axios = require('axios');
-const logger = require('../logger');
+const logger = require('../core/logger');
 
-const { whatsapp, whatsappState, MessageMedia } = require('./whatsapp-client');
+// Eliminamos la importación circular - los objetos whatsapp, whatsappState, MessageMedia 
+// se pasan como parámetros a las funciones
 const { updateLastOperation } = require('./whatsapp-utils');
 const qrcode = require('qrcode-terminal');
 // Estos dos deben ser importados desde el archivo principal y pasados como parámetro si se usan en los handlers:
