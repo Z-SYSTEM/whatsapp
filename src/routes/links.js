@@ -1,12 +1,6 @@
 require('dotenv').config()
 const {Router} = require('express');
-const whatsappModule = require('../lib/whatsapp/whatsapp');
-let recoverySequence;
-try {
-    recoverySequence = whatsappModule.recoverySequence;
-} catch (e) {
-    recoverySequence = null;
-}
+const { whatsapp, MessageMedia, whatsappState, isClientReady, handleSessionError, sendMessageWithTimeout, updateLastOperation, recoverySequence } = require('../lib/whatsapp/whatsapp');
 
 
 const logger = require('../lib/core/logger');
@@ -40,7 +34,7 @@ router.post('/send', async (req, res) => {
     }
 
     // Verificación más robusta del estado del cliente
-    const clientReady = await whatsappModule.isClientReady(whatsappModule.whatsapp, whatsappModule.whatsappState);
+    const clientReady = await isClientReady(whatsapp, whatsappState);
     if (!clientReady) {
         logger.warn('WhatsApp client not ready or session closed');
         return res.status(503).json({ res: false, error: 'WhatsApp client not connected or session closed' });
@@ -105,21 +99,21 @@ router.post('/send', async (req, res) => {
                 return res.status(400).json({ error: 'Destinatario no permitido.' });
             }
 
-            const number_details = await whatsappModule.whatsapp.getNumberId(chatId);
+            const number_details = await whatsapp.getNumberId(chatId);
 
             if (number_details) {
                 if (pdfUrl) {
                     logger.info(`Sending PDF to ${chatId}`);
-                    const media = await whatsappModule.MessageMedia.fromUrl(pdfUrl, { mimeType: 'application/pdf' });
-                    await whatsappModule.whatsapp.sendMessage(chatId, media, { caption: message || '' });
+                    const media = await MessageMedia.fromUrl(pdfUrl, { mimeType: 'application/pdf' });
+                    await whatsapp.sendMessage(chatId, media, { caption: message || '' });
                 } else if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
                     logger.info(`Sending ${imageUrls.length} images to ${chatId}`);
                     for (let i = 0; i < imageUrls.length; i++) {
                         try {
-                            const media = await whatsappModule.MessageMedia.fromUrl(imageUrls[i], { unsafeMime: true });
+                            const media = await MessageMedia.fromUrl(imageUrls[i], { unsafeMime: true });
                             // Solo enviar caption en la primera imagen
                             const caption = (i === 0 && message) ? message : '';
-                            await whatsappModule.whatsapp.sendMessage(chatId, media, { caption });
+                            await whatsapp.sendMessage(chatId, media, { caption });
                             logger.info(`Image ${i + 1}/${imageUrls.length} sent to ${chatId}`);
                             // Pequeña pausa entre imágenes para evitar spam
                             if (i < imageUrls.length - 1) {
@@ -132,11 +126,11 @@ router.post('/send', async (req, res) => {
                     }
                 } else if (imageUrl) {
                     logger.info(`Sending single image to ${chatId}`);
-                    const media = await whatsappModule.MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
-                    await whatsappModule.whatsapp.sendMessage(chatId, media, { caption: message || '' });
+                    const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+                    await whatsapp.sendMessage(chatId, media, { caption: message || '' });
                 } else if (message) {
                     logger.info(`Sending text message to ${chatId}: ${message}`);
-                    await whatsappModule.whatsapp.sendMessage(chatId, message);
+                    await whatsapp.sendMessage(chatId, message);
                 }
                 logger.info(`Message sent to ${chatId}`);
                 return res.json({ status: true });
@@ -179,15 +173,15 @@ router.get('/test', async (req, res) => {
     }
    
     try {
-        if (!whatsappModule.whatsapp) {
+        if (!whatsapp) {
             logger.error(`Health check on /test from IP: ${clientIp} - whatsapp client is undefined`);
             return res.status(503).json({ status: 'error', whatsapp: 'client undefined' });
         }
-        if (!whatsappModule.whatsappState) {
+        if (!whatsappState) {
             logger.error(`Health check on /test from IP: ${clientIp} - whatsappState is undefined`);
             return res.status(503).json({ status: 'error', whatsapp: 'state undefined' });
         }
-        const clientReady = await whatsappModule.isClientReady(whatsappModule.whatsapp, whatsappModule.whatsappState);
+        const clientReady = await isClientReady(whatsapp, whatsappState);
         if (clientReady) {
             res.status(200).json({ status: 'ok', whatsapp: 'ready' });
         } else {
@@ -216,10 +210,10 @@ router.get('/contact', async (req, res) => {
     }
     const wid = phoneNumber.endsWith('@c.us') ? phoneNumber : `${phoneNumber}@c.us`;
     try {
-        const contact = await whatsappModule.whatsapp.getContactById(wid);
+        const contact = await whatsapp.getContactById(wid);
         let profilePicUrl = null;
         try {
-            profilePicUrl = await whatsappModule.whatsapp.getProfilePicUrl(wid);
+            profilePicUrl = await whatsapp.getProfilePicUrl(wid);
         } catch (e) {
             profilePicUrl = null;
         }
