@@ -75,7 +75,7 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
       return;
     }
     const ignoredTypes = [
-      'call_log', 'e2e_notification', 'revoked', 'multi_vcard',
+      'call_log', 'e2e_notification', 'revoked',
       'order', 'product', 'list', 'buttons_response', 'list_response',
       'poll', 'poll_response', 'notification_template'
     ];
@@ -87,6 +87,46 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
       let match = msg.from.match(/^([^@]+)@/);
       let phoneNumber = match ? match[1] : null;
       let url = process.env.ONMESSAGE;
+      
+      // Manejo especial para multi_vcard - enviar cada contacto individualmente
+      if (msg.type === 'multi_vcard' && msg.vcards && Array.isArray(msg.vcards)) {
+        logger.info(`Processing multi_vcard with ${msg.vcards.length} contacts from ${msg.from}`);
+        
+        for (let i = 0; i < msg.vcards.length; i++) {
+          const vcard = msg.vcards[i];
+          let individualPayload = {
+            phoneNumber: msg.from.replace('@c.us', ''),
+            type: 'vcard', // Enviamos cada uno como vcard individual
+            from: msg.from,
+            id: `${msg.id._serialized}_contact_${i}`, // ID único para cada contacto
+            timestamp: msg.timestamp,
+            body: msg.body,
+            hasMedia: msg.hasMedia,
+            isForwarded: msg.isForwarded || (msg.forwardingScore > 0),
+            data: {
+              vcard: vcard || ''
+            }
+          };
+          
+          logger.info(`Posting individual contact ${i + 1}/${msg.vcards.length} to ONMESSAGE (${url}): ${JSON.stringify(individualPayload)}`);
+          let config = {
+            headers: {
+              'Content-type': 'application/json'
+            }
+          };
+          
+          try {
+            await axios.post(url, JSON.stringify(individualPayload), config);
+            logger.info(`Posted contact ${i + 1}/${msg.vcards.length} info to ${url} | id: ${individualPayload.id} | type: ${individualPayload.type} | phoneNumber: ${individualPayload.phoneNumber}`);
+          } catch (err) {
+            logger.error(`Error posting contact ${i + 1}/${msg.vcards.length} info: ${err.stack || err} | id: ${individualPayload.id} | type: ${individualPayload.type} | phoneNumber: ${individualPayload.phoneNumber}`);
+          }
+        }
+        
+        updateLastOperation();
+        return; // Salir temprano ya que procesamos todo aquí
+      }
+      
       let payload = {
         phoneNumber: msg.from.replace('@c.us', ''),
         type: msg.type,
