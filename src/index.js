@@ -1,6 +1,6 @@
-
 // Habilitar logs internos de whatsapp y puppeteer para debug
-process.env.DEBUG = 'whatsapp*,puppeteer:*';
+// process.env.DEBUG = 'whatsapp*,puppeteer:*';
+process.env.DEBUG = '';
 require('dotenv').config();
 
 const fs = require('fs');
