@@ -12,6 +12,81 @@ const qrcode = require('qrcode-terminal');
 
 
 // === FUNCIONES ===
+
+// Función para manejar álbumes (múltiples medios en un mensaje)
+async function handleAlbumMessage(msg, logger, updateLastOperation) {
+  try {
+    logger.info(`[ALBUM] Detectado posible álbum - ID: ${msg.id._serialized}`);
+    
+    // Verificar si es parte de un álbum usando propiedades del mensaje
+    if (!msg._data || (!msg._data.isGrouped && !msg._data.groupedMessageId)) {
+      return false;
+    }
+
+    const albumId = msg._data.groupedMessageId || msg.id._serialized;
+    logger.info(`[ALBUM] Procesando álbum con ID: ${albumId}`);
+    
+    // Crear estructura del álbum
+    const albumData = {
+      id: albumId,
+      type: 'album',
+      phoneNumber: msg.from.replace('@c.us', ''),
+      from: msg.from,
+      timestamp: msg.timestamp,
+      body: msg.body || msg.caption || '',
+      hasMedia: true,
+      isForwarded: msg.isForwarded || (msg.forwardingScore > 0),
+      media: []
+    };
+
+    // Si el mensaje tiene media, procesarlo
+    if (msg.hasMedia) {
+      try {
+        logger.info(`[ALBUM] Descargando media del álbum...`);
+        const media = await msg.downloadMedia();
+        if (media) {
+          albumData.media.push({
+            index: 0,
+            mimetype: media.mimetype,
+            filename: media.filename || msg.filename || `album_item_0`,
+            data: media.data,
+            size: media.data ? Buffer.from(media.data, 'base64').length : 0
+          });
+          logger.info(`[ALBUM] Media descargado - Tipo: ${media.mimetype}, Tamaño: ${albumData.media[0].size} bytes`);
+        }
+      } catch (err) {
+        logger.error(`[ALBUM] Error descargando media:`, err);
+      }
+    }
+
+    // Enviar al endpoint si hay media
+    if (albumData.media.length > 0 && process.env.ONMESSAGE) {
+      albumData.mediaCount = albumData.media.length;
+      
+      const url = process.env.ONMESSAGE;
+      const config = {
+        headers: {
+          'Content-type': 'application/json'
+        }
+      };
+
+      try {
+        logger.info(`[ALBUM] Enviando álbum al endpoint: ${JSON.stringify(albumData).substring(0, 200)}...`);
+        await axios.post(url, JSON.stringify(albumData), config);
+        logger.info(`[ALBUM] Álbum enviado exitosamente - ID: ${albumId}, Media count: ${albumData.mediaCount}`);
+        updateLastOperation();
+      } catch (err) {
+        logger.error(`[ALBUM] Error enviando álbum al endpoint:`, err);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    logger.error('[ALBUM] Error procesando álbum:', error);
+    return false;
+  }
+}
+
 function registerWhatsappConnectionEvents(whatsapp, whatsappState, notifyDown, sendPushNotificationFCM, logger) {
   whatsapp.on('disconnected', (reason) => {
     logger.warn(`WhatsApp client disconnected: ${reason}`);
@@ -65,6 +140,12 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
   whatsapp.on('message', async (msg) => {
     logger.info(`Received message from ${msg.from} of type ${msg.type}`);
     logger.info(`[ONMESSAGE][DEBUG] msg.id: ${msg.id ? msg.id._serialized : 'N/A'} | hasMedia: ${msg.hasMedia} | caption: ${msg.caption || ''} | body: ${msg.body || ''} | mimetype: ${msg.mimetype || ''} | filename: ${msg.filename || ''}`);
+    
+    // Debug adicional para álbumes
+    if (msg._data) {
+      logger.info(`[ONMESSAGE][DEBUG] _data.isGrouped: ${msg._data.isGrouped} | _data.groupedMessageId: ${msg._data.groupedMessageId || 'N/A'}`);
+    }
+    
     if (msg.location) {
       logger.info(`[ONMESSAGE][DEBUG] location: lat=${msg.location.latitude}, lon=${msg.location.longitude}, desc=${msg.location.description}`);
     }
@@ -84,6 +165,17 @@ function registerWhatsappMessageEvents(whatsapp, logger, updateLastOperation) {
       logger.info(`Mensaje ignorado de tipo ${msg.type} de ${msg.from}`);
       return;
     }
+
+    // Verificar primero si es parte de un álbum
+    if (msg._data && (msg._data.isGrouped || msg._data.groupedMessageId) && msg.hasMedia) {
+      logger.info(`[MESSAGE] Detectado mensaje agrupado (álbum)`);
+      const handled = await handleAlbumMessage(msg, logger, updateLastOperation);
+      if (handled) {
+        logger.info(`[MESSAGE] Mensaje procesado como álbum`);
+        return; // Salir temprano si se procesó como álbum
+      }
+    }
+
     if (process.env.ONMESSAGE) {
       let match = msg.from.match(/^([^@]+)@/);
       let phoneNumber = match ? match[1] : null;
