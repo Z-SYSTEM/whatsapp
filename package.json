@@ -18,7 +18,11 @@
     "form-data": "^4.0.4",
     "puppeteer": "^24.10.2",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.31.0",
+    "whatsapp-web.js": "^1.32.0",
     "winston": "^3.17.0"
+  },
+  "overrides": {
+    "tar-fs": "^3.0.6",
+    "ws": "^8.18.0"
   }
 }
