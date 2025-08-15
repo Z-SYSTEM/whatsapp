@@ -15,7 +15,19 @@ sessionBackup.startSessionBackup(logger);
 const whatsapp = new Client({
   authStrategy: new LocalAuth({
     clientId: process.env.BOT_NAME || "default-bot"
-  })
+  }),
+  puppeteer: {
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu'
+    ]
+  }
 });
 
 const whatsappState = { isReady: false, wasEverReady: false };
