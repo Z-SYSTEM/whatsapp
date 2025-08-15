@@ -25,8 +25,17 @@ const whatsapp = new Client({
       '--no-first-run',
       '--no-zygote',
       '--single-process',
-      '--disable-gpu'
-    ]
+      '--disable-gpu',
+      '--disable-web-security',
+      '--disable-features=VizDisplayCompositor',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-field-trial-config',
+      '--disable-back-forward-cache',
+      '--disable-ipc-flooding-protection'
+    ],
+    headless: true
   }
 });
 

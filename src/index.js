@@ -21,10 +21,10 @@ console.info(`[BOOT] BOT_NAME=${BOT_NAME}, puerto=${puerto}, SESSION_PATH=${SESS
     console.info('[BOOT] [STEP 4] preStartupCheck finalizado. Iniciando inicialización de WhatsApp...');
     console.info('[BOOT] [STEP 4.1] Llamando whatsapp.initialize()...');
     
-    // Agregar timeout manual para debug
+    // Agregar timeout manual para debug - aumentado a 90 segundos
     const initPromise = whatsapp.initialize();
     const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Manual timeout after 30 seconds')), 30000);
+        setTimeout(() => reject(new Error('Manual timeout after 90 seconds')), 90000);
     });
     
     try {

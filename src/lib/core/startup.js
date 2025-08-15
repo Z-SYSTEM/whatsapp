@@ -48,7 +48,8 @@ async function preStartupCheck(BOT_NAME, puerto, SESSION_PATH, HEALTHCHECK_URL) 
             if (process.platform === 'win32') {
                 psOutput = execSync(`tasklist /FI "IMAGENAME eq chrome.exe" /FO CSV`).toString();
             } else {
-                psOutput = execSync(`ps aux | grep '[c]hrome'`).toString();
+                // Comando mejorado para Linux que busca procesos relacionados con la sesión
+                psOutput = execSync(`ps aux | grep -E '(chrome|chromium).*${SESSION_PATH.replace(/\//g, '\\/')}'`).toString();
             }
             console.info('[BOOT] [STEP 2.2] Salida de proceso obtenida.');
         } catch (e) { 
@@ -81,6 +82,17 @@ async function preStartupCheck(BOT_NAME, puerto, SESSION_PATH, HEALTHCHECK_URL) 
         console.info('[BOOT] [STEP 2.6] SingletonLock eliminado.');
     } else {
         console.info('[BOOT] [STEP 2.7] No existe SingletonLock, continuando.');
+    }
+
+    // 3. Limpieza adicional de procesos Chrome zombie (Linux)
+    if (process.platform !== 'win32') {
+        console.info('[BOOT] [STEP 3] Limpieza adicional de procesos Chrome zombie...');
+        try {
+            execSync(`pkill -f 'chrome.*--user-data-dir.*${SESSION_PATH}'`, { stdio: 'ignore' });
+            console.info('[BOOT] [STEP 3.1] Procesos Chrome zombie eliminados.');
+        } catch (e) {
+            console.info('[BOOT] [STEP 3.2] No se encontraron procesos Chrome zombie o error al eliminar.');
+        }
     }
 }
 
